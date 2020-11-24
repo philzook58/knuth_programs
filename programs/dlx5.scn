@@ -1,0 +1,94 @@
+\I\X30:Adjust \PB{\\{pp}} for parameters \.Z and \.z\X
+\U25.
+\I\X35:Advance \PB{\|p}\X
+\U34.
+\I\X36:Advance \PB{\|q}\X
+\U34.
+\I\X31:Assign taxes\X
+\U3.
+\I\X4:Bid farewell\X
+\U2.
+\I\X29:Check for consistency with parameters \.Z and \.z\X
+\U22.
+\I\X20:Check for duplicate item name\X
+\U19.
+\I\X18:Check item \PB{\|p}\X
+\U17.
+\I\X8:Close the files\X
+\U4.
+\I\X45:Cover all other items of \PB{\\{cur\_node}}\X
+\U39.
+\I\X25:Create a node for the item named in \PB{\\{buf}[\|p]}\X
+\U22.
+\I\X42:Do special things if enough \PB{\\{mems}} have accumulated\X
+\U39.
+\I\X3:Do the input phase\X
+\U2.
+\I\X6, 13, 41:Global variables\X
+\U2.
+\I\X50:Go to \PB{\\{backdown}} if the remaining min costs are too high\X
+\U49.
+\I\X49:If the remaining cost is clearly too high, \PB{\&{goto} \\{backdown}}\X
+\U39.
+\I\X52:Include \PB{\\{tmpcost}} in \PB{\\{acccost}}\X
+\U50.
+\I\X51:Include \PB{\\{tmpcost}} in \PB{\\{cumcost}[\|r]}\X
+\U50.
+\I\X40:Initialize for level 0\X
+\U39.
+\I\X21:Initialize \PB{\\{last\_itm}} to a new item with an empty list\X
+\U19.
+\I\X19:Input the item names\X
+\U3.
+\I\X22:Input the options\X
+\U3.
+\I\X26:Insert node \PB{\\{last\_node}} into the list for item \PB{\|k}\X
+\U25.
+\I\X24:Insert the cost into each item of this option\X
+\U22.
+\I\X54:Look at the least-cost options for item \PB{\|k}, possibly updating \PB{%
+\\{best\_itm}}\X
+\U53.
+\I\X33:Make the \PB{\\{down}} links consistent with the \PB{\\{up}} links\X
+\U32.
+\I\X10:Print a line (except the first time)\X
+\U9.
+\I\X61:Print the profile\X
+\U4.
+\I\X9:Print the \PB{\\{kthresh}} best costs found\X
+\U4.
+\I\X7:Process the command line\X
+\U2.
+\I\X58:Record solution and \PB{\&{goto} \\{recover}}\X
+\U55.
+\I\X27:Remove \PB{\\{last\_node}} from its item list\X
+\U22.
+\I\X38:Report the item totals\X
+\Us3\ET4.
+\I\X37:Report the successful completion of the input phase\X
+\U3.
+\I\X53:Set \PB{\\{best\_itm}} to the best item for branching, or \PB{\&{goto} %
+\\{backdown}}\X
+\U39.
+\I\X28:Set \PB{\\{ppgiven}} from parameters \.Z and \.z\X
+\U22.
+\I\X23:Skip to next item, accruing cost information if any\X
+\U22.
+\I\X39:Solve the problem\X
+\U2.
+\I\X34:Sort item list \PB{\|k}\X
+\U32.
+\I\X32:Sort the item lists\X
+\U3.
+\I\X57:Sort the \PB{\\{bestcost}} heap in preparation for final printing\X
+\U9.
+\I\X15, 16, 17, 43, 44, 47, 48, 59, 60, 62:Subroutines\X
+\U2.
+\I\X11, 12:Type definitions\X
+\U2.
+\I\X46:Uncover all other items of \PB{\\{cur\_node}}\X
+\U39.
+\I\X56:Update \PB{\\{cutoffcost}}\X
+\U55.
+\I\X55:Visit a solution and \PB{\&{goto} \\{recover}}\X
+\U39.

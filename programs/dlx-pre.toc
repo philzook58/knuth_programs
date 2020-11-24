@@ -1,0 +1,9 @@
+\catcode `\@=11\relax 
+\ZZ {Intro}{1}{1}{1}{Intro}
+\ZZ {Data structures}{1}{7}{5}{Data structures}
+\ZZ {Inputting the matrix}{1}{16}{9}{Inputting the matrix}
+\ZZ {The dancing}{1}{25}{12}{The dancing}
+\ZZ {The output phase}{1}{43}{20}{The output phase}
+\ZZ {Index}{1}{46}{21}{Index}
+
+\catcode `\@=12\relax 

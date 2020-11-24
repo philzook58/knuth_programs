@@ -1,0 +1,200 @@
+\input cwebmac
+
+\N{1}{1}Intro. I'm testing the clauses for nondeterministic finite-state
+automata
+in exercise 7.2.2.2--436.
+
+[``Historical notes'': I wrote that exercise in October 2014, but didn't
+keep any copy of the draft that led to it. In April 2016, after discovering
+problems in the printed solution, I found a proofsheet dated 22 Oct 2014,
+in my file of scrap MS pages, which contained the earliest version.
+That version was more complicated than the present one,
+using states called $t_{kqaq'}$; it was inspired by the construction
+of Bacchus for deterministic automata. On that sheet I had pencilled in the
+new version, which was based on using the Quimper--Walsh construction
+of exercise 7.2.2.2--440 and specializing it to the case of regular grammars.
+Those changes were incorporated into the file \.{7.2.2.2.tex} on 22 October.]
+
+The specifications for the automaton are given entirely on the command line.
+Each state is represented by a single ASCII character, between \.{!} and
+\.{\char`\}} inclusive, other than \.0 or \.1; I recommend using letters.
+The first argument specifies the string length, $n$.
+The next argument specifies one or more input states.
+The next argument specifies one or more output states.
+The remaining arguments are the transitions.
+
+For example, to get all $n$-bit strings of the form $0*110*$,
+the command-line arguments
+$$\.{$n$ a c a0a a1b b1c c0c}$$
+ought to work.
+
+Variables for the {\mc SAT} clauses are: \.{$k$} for $x_k$;
+\.{q$k$} for $q_k$; and \.{qa$k$} for $t_{kaq}$. (Here $k$ is
+given in decimal.)
+
+I apologize for writing this in a huge hurry.
+
+\Y\B\4\D$\\{badstate}(\|k)$ \5
+$((\|k)<\.{'!'}\V(\|k)\G\.{'\~'}\V(\|k)\E\.{'0'}\V(\|k)\E\.{'1'}{}$)\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\&{int} \|n;\C{ command-line argument }\6
+\&{char} \\{isinput}[\T{128}]${},{}$ \\{isoutput}[\T{128}]${},{}$ \\{isstate}[%
+\T{128}];\6
+\&{char} \\{istrans}[\T{128}][\T{2}];\7
+\\{main}(\&{int} \\{argc}${},\39{}$\&{char} ${}{*}\\{argv}[\,]){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|a${},{}$ \|j${},{}$ \|k${},{}$ \|q;\7
+\X2:Process the command line\X;\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k\Z\|n;{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+\X3:Generate the clauses of type (i)\X;\6
+\X4:Generate the clauses of type (ii)\X;\6
+\X5:Generate the clauses of type (iii)\X;\6
+\X6:Generate the clauses of type (iv)\X;\6
+\X7:Generate the clauses of type (v)\X;\6
+\4${}\}{}$\2\6
+\X8:Generate the clauses of type (vi)\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}\B\X2:Process the command line\X${}\E{}$\6
+\&{if} ${}(\\{argc}<\T{4}\V\\{sscanf}(\\{argv}[\T{1}],\39\.{"\%d"},\39{\AND}%
+\|n)\I\T{1}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Usage:\ \%s\ n\ I\ O\ \{qa}\)\.{q'\}*\\n"},\39%
+\\{argv}[\T{0}]);{}$\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|j\K\T{0};{}$ \\{argv}[\T{2}][\|j]; ${}\|j\PP){}$\5
+${}\{{}$\1\6
+${}\|k\K\\{argv}[\T{2}][\|j];{}$\6
+\&{if} (\\{badstate}(\|k))\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Improper\ input\ stat}\)\.{e\ `\%c'!\\n"},\39%
+\|k);{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\6
+${}\\{isinput}[\|k]\K\T{1};{}$\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|j\K\T{0};{}$ \\{argv}[\T{3}][\|j]; ${}\|j\PP){}$\5
+${}\{{}$\1\6
+${}\|k\K\\{argv}[\T{3}][\|j];{}$\6
+\&{if} (\\{badstate}(\|k))\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Improper\ input\ stat}\)\.{e\ `\%c'!\\n"},\39%
+\|k);{}$\6
+${}\\{exit}({-}\T{3});{}$\6
+\4${}\}{}$\2\6
+${}\\{isoutput}[\|k]\K\T{1};{}$\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|j\K\T{4};{}$ ${}\|j<\\{argc};{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{badstate}(\\{argv}[\|j][\T{0}])\V\\{badstate}(\\{argv}[\|j][%
+\T{2}])\V\\{argv}[\|j][\T{1}]<\.{'0'}\V\\{argv}[\|j][\T{1}]>\.{'1'}\V\\{argv}[%
+\|j][\T{3}]){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Improper\ transition}\)\.{\ `\%s'!\\n"},\39%
+\\{argv}[\|j]);{}$\6
+${}\\{exit}({-}\T{4});{}$\6
+\4${}\}{}$\2\6
+${}\\{isstate}[\\{argv}[\|j][\T{0}]]\K\T{1};{}$\6
+${}\\{isstate}[\\{argv}[\|j][\T{2}]]\K\T{1};{}$\6
+${}\\{istrans}[\\{argv}[\|j][\T{2}]][\\{argv}[\|j][\T{1}]-\.{'0'}]\K\T{1};{}$\6
+\4${}\}{}$\2\6
+\\{printf}(\.{"\~"});\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\\{argc};{}$ ${}\|k\PP){}$\1\5
+${}\\{printf}(\.{"\ \%s"},\39\\{argv}[\|k]);{}$\2\6
+\\{printf}(\.{"\\n"});\C{ mirror the command line as the first line of output }%
+\par
+\U1.\fi
+
+\M{3}\B\X3:Generate the clauses of type (i)\X${}\E{}$\6
+\&{for} ${}(\|q\K\.{'!'};{}$ ${}\|q<\.{'\~'};{}$ ${}\|q\PP){}$\1\6
+\&{if} (\\{isstate}[\|q])\5
+${}\{{}$\1\6
+\&{if} (\\{istrans}[\|q][\T{0}])\5
+${}\{{}$\1\6
+${}\\{printf}(\.{"\~\%c0\%d\ \~\%d\\n"},\39\|q,\39\|k,\39\|k);{}$\6
+${}\\{printf}(\.{"\~\%c0\%d\ \%c\%d\\n"},\39\|q,\39\|k,\39\|q,\39\|k);{}$\6
+\4${}\}{}$\2\6
+\&{if} (\\{istrans}[\|q][\T{1}])\5
+${}\{{}$\1\6
+${}\\{printf}(\.{"\~\%c1\%d\ \%d\\n"},\39\|q,\39\|k,\39\|k);{}$\6
+${}\\{printf}(\.{"\~\%c1\%d\ \%c\%d\\n"},\39\|q,\39\|k,\39\|q,\39\|k);{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\2\par
+\U1.\fi
+
+\M{4}\B\X4:Generate the clauses of type (ii)\X${}\E{}$\6
+\&{for} ${}(\|q\K\.{'!'};{}$ ${}\|q<\.{'\~'};{}$ ${}\|q\PP){}$\1\6
+\&{if} (\\{isstate}[\|q])\5
+${}\{{}$\1\6
+${}\\{printf}(\.{"\~\%c\%d"},\39\|q,\39\|k-\T{1});{}$\6
+\&{for} ${}(\|j\K\T{4};{}$ ${}\|j<\\{argc};{}$ ${}\|j\PP){}$\1\6
+\&{if} ${}(\\{argv}[\|j][\T{0}]\E\|q){}$\1\5
+${}\\{printf}(\.{"\ \%c\%c\%d"},\39\\{argv}[\|j][\T{2}],\39\\{argv}[\|j][%
+\T{1}],\39\|k);{}$\2\2\6
+\\{printf}(\.{"\\n"});\6
+\4${}\}{}$\2\2\par
+\U1.\fi
+
+\M{5}\B\X5:Generate the clauses of type (iii)\X${}\E{}$\6
+\&{for} ${}(\|q\K\.{'!'};{}$ ${}\|q<\.{'\~'};{}$ ${}\|q\PP){}$\1\6
+\&{if} (\\{isstate}[\|q])\5
+${}\{{}$\1\6
+${}\\{printf}(\.{"\~\%c\%d"},\39\|q,\39\|k);{}$\6
+\&{for} ${}(\|j\K\T{4};{}$ ${}\|j<\\{argc};{}$ ${}\|j\PP){}$\1\6
+\&{if} ${}(\\{argv}[\|j][\T{2}]\E\|q){}$\1\5
+${}\\{printf}(\.{"\ \%c\%c\%d"},\39\\{argv}[\|j][\T{2}],\39\\{argv}[\|j][%
+\T{1}],\39\|k);{}$\2\2\6
+\\{printf}(\.{"\\n"});\6
+\4${}\}{}$\2\2\par
+\U1.\fi
+
+\M{6}\B\X6:Generate the clauses of type (iv)\X${}\E{}$\6
+$\\{printf}(\.{"\%d"},\39\|k);{}$\6
+\&{for} ${}(\|j\K\T{4};{}$ ${}\|j<\\{argc};{}$ ${}\|j\PP){}$\1\6
+\&{if} ${}(\\{argv}[\|j][\T{1}]\E\.{'0'}){}$\1\5
+${}\\{printf}(\.{"\ \%c0\%d"},\39\\{argv}[\|j][\T{2}],\39\|k);{}$\2\2\6
+\\{printf}(\.{"\\n"});\6
+${}\\{printf}(\.{"\~\%d"},\39\|k);{}$\6
+\&{for} ${}(\|j\K\T{4};{}$ ${}\|j<\\{argc};{}$ ${}\|j\PP){}$\1\6
+\&{if} ${}(\\{argv}[\|j][\T{1}]\E\.{'1'}){}$\1\5
+${}\\{printf}(\.{"\ \%c1\%d"},\39\\{argv}[\|j][\T{2}],\39\|k);{}$\2\2\6
+\\{printf}(\.{"\\n"});\par
+\U1.\fi
+
+\M{7}\B\X7:Generate the clauses of type (v)\X${}\E{}$\6
+\&{for} ${}(\|q\K\.{'!'};{}$ ${}\|q<\.{'\~'};{}$ ${}\|q\PP){}$\1\6
+\&{if} (\\{isstate}[\|q])\5
+${}\{{}$\1\6
+\&{for} ${}(\|a\K\.{'0'};{}$ ${}\|a<\.{'2'};{}$ ${}\|a\PP){}$\1\6
+\&{if} ${}(\\{istrans}[\|q][\|a-\.{'0'}]){}$\5
+${}\{{}$\1\6
+${}\\{printf}(\.{"\~\%c\%c\%d"},\39\|q,\39\|a,\39\|k);{}$\6
+\&{for} ${}(\|j\K\T{4};{}$ ${}\|j<\\{argc};{}$ ${}\|j\PP){}$\1\6
+\&{if} ${}(\\{argv}[\|j][\T{2}]\E\|q\W\\{argv}[\|j][\T{1}]\E\|a){}$\1\5
+${}\\{printf}(\.{"\ \%c\%d"},\39\\{argv}[\|j][\T{0}],\39\|k-\T{1});{}$\2\2\6
+\\{printf}(\.{"\\n"});\6
+\4${}\}{}$\2\2\6
+\4${}\}{}$\2\2\par
+\U1.\fi
+
+\M{8}\B\X8:Generate the clauses of type (vi)\X${}\E{}$\6
+\&{for} ${}(\|q\K\.{'!'};{}$ ${}\|q<\.{'\~'};{}$ ${}\|q\PP){}$\1\6
+\&{if} (\\{isstate}[\|q])\5
+${}\{{}$\1\6
+\&{if} ${}(\R\\{isinput}[\|q]){}$\1\5
+${}\\{printf}(\.{"\~\%c0\\n"},\39\|q);{}$\2\6
+\&{if} ${}(\R\\{isoutput}[\|q]){}$\1\5
+${}\\{printf}(\.{"\~\%c\%d\\n"},\39\|q,\39\|n);{}$\2\6
+\4${}\}{}$\2\2\par
+\U1.\fi
+
+\N{1}{9}Index.
+\fi
+
+\inx
+\fin
+\con

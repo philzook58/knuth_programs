@@ -1,0 +1,13 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {The method and its data structures}{1}{4}{3}{The method and its data structures}
+\ZZ {Diagnostic routines}{1}{9}{5}{Diagnostic routines}
+\ZZ {Graph preparation}{1}{18}{9}{Graph preparation}
+\ZZ {Reduction}{1}{19}{10}{Reduction}
+\ZZ {The main algorithm}{1}{25}{13}{The main algorithm}
+\ZZ {Construction}{1}{31}{16}{Construction}
+\ZZ {Deconstruction}{1}{39}{21}{Deconstruction}
+\ZZ {Pulsing the action list}{1}{47}{26}{Pulsing the action list}
+\ZZ {Index}{1}{51}{28}{Index}
+
+\catcode `\@=12\relax 

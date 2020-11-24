@@ -1,0 +1,1553 @@
+\input cwebmac
+\def\bslash{/\mkern-4.5mu/}  % for continued fractions
+\font\logo=logo10
+\def\MP{{\logo METAPOST}}
+\input epsf
+\let\possiblyflakyepsfbox=\epsfbox
+\def\epsfbox#1{\hbox{\possiblyflakyepsfbox{#1}}}
+
+\let\mod=\bmod
+
+\datethis
+
+\N{1}{1}Introduction. I'm trying to calculate a few billion Ulam numbers.
+This sequence
+$$(U_1,U_2,\ldots{})=(1,2,3,4,6,8,11,13,16,18,
+26,28,36,38,47,48,53,57,62,69,\ldots{})$$
+is defined by setting $U_1=1$, $U_2=2$, and thereafter letting
+$U_{n+1}$ be the smallest number greater than $U_n$ that can be
+written $U_j+U_k$ for exactly one pair $(j,k)$ with $1\le j<k\le n$.
+(Such a number must exist; otherwise the pair $(j,k)=(n-1,n)$ would
+qualify and lead to a contradiction.)
+
+The related sequence
+$$(1, 2, 23, 25, 33, 35, 43, 45, 67, 92, 94, 96, 111, 121, 136,\ldots{})$$
+of ``Ulam misses'' contains all numbers that cannot be
+expressed as the sum of two distinct Ulams.
+
+This program is based on some beautiful ideas due to Philip E. Gibbs,
+whose Java code in 2015 was first to beat the billion-number barrier.
+It runs much, much faster than the bitwise-oriented program {\mc ULAM}
+that I wrote ten years ago. And it has some interesting touches that
+taught me some lessons, which I'm keen to pass on to others.
+
+Ulam mentioned this sequence in {\sl SIAM Review\/ \bf6} (1964), 348,
+as part of a more general discussion. Its properties have baffled number
+theorists for many years; but new insights are beginning to change the picture:
+Stefan Steinerberger discovered empirically that $U_n/\lambda\mod1$ almost
+always lies in the interval $\bigl[{1\over3}.\,.{2\over3}]$, where
+$\lambda\approx2.443443$ [``A hidden signal in the Ulam sequence,''
+Report DCS/TR-1508 (Yale University, 2015)].
+Then Gibbs [``An efficient method for computing Ulam numbers,''
+viXra:1508.0085 (2015)] exploited that property in nontrivial ways,
+finding that roughly $O(N)$ time and $O(N)$ space suffice to compute
+the first $N$ terms. He subsequently discovered how to significantly
+decrease the coefficients of~$N$ in the time and space requirements; and when I
+asked him how he did it, he kindly sent me a copy of his program.
+
+Of course I couldn't resist translating it from Java into \.{CWEB},
+because that's what I do for a living. So this is the result.
+
+\fi
+
+\M{2}This program has lots of tunable parameters, and it should prove
+to be interesting to see how they affect the performance. Of course
+the main parameter is $N$, the desired number of outputs. Other options
+are preceded on the command line by a letter; for example,
+`\.{v5}' sets the verboseness parameter to~5.
+
+Each parameter will
+be explained later, but it's convenient to summarize the option letters here:
+\smallskip
+\item{$\bullet$}
+`\.v$\langle\,$integer$\,\rangle$' to enable various binary-coded
+levels of verbose output on \PB{\\{stderr}} (default=1).
+\item{$\bullet$}
+`\.p$\langle\,$positive integer$\,\rangle$' to specify the numerator
+of a rational approximation to~$\lambda$ (default=120500181).
+\item{$\bullet$}
+`\.q$\langle\,$positive integer$\,\rangle$' to specify the denominator
+of a rational approximation to~$\lambda$ (default=49315733). The program
+assumes that $p$ and $q$ are less than $2^{32}$, and that $2<p/q\le3$.
+\item{$\bullet$}
+`\.m$\langle\,$positive integer$\,\rangle$' to specify the spacing
+of outputs; every $m$th Ulam number will be written to standard output.
+(The default is $m=1000000$; \.{m0} will report only $U_N$.)
+\item{$\bullet$}
+`\.g$\langle\,$positive integer$\,\rangle$' to specify the largest
+gap for which statistics are kept (default=2000).
+\item{$\bullet$}
+`\.o$\langle\,$positive integer$\,\rangle$' to specify the space
+allocated for ``outliers'' and ``near-outliers'' (default=1000000).
+\item{$\bullet$}
+`\.i$\langle\,$positive integer$\,\rangle$' to specify the size of the
+indexes to those lists (default=100000).
+\item{$\bullet$}
+`\.T$\langle\,$positive real$\,\rangle$' to specify the threshold
+in the definition of `near outlier' (default=100).
+\item{$\bullet$}
+`\.b$\langle\,$positive integer$\,\rangle$' to specify the number
+of bits of the \PB{\\{is\_um}} table that are stored in a single byte
+(default=18).
+(That default is optimum: \.{b19} turns out to be too high, if $N>2198412$.)
+\item{$\bullet$}
+`\.B$\langle\,$positive integer$\,\rangle$' to specify the number
+of initial \PB{\\{is\_ulam}} entries that are encoded with one bit per byte
+(default=18000). This value should be a multiple of the \.b option,
+and at least~3.
+\item{$\bullet$}
+`\.w$\langle\,$positive integer$\,\rangle$' to specify the window size
+for remembering recently computed Ulam numbers (default=1000000).
+The window size must be at least~3.
+\item{$\bullet$}
+`\.M$\langle\,$filename$\,\rangle$' to produce \MP\ illustrations
+showing the distributions of Ulam numbers and Ulam misses, modulo~$\lambda$.
+
+\fi
+
+\M{3}The \PB{\\{vbose}} parameter is the sum of the following binary codes.
+To enable everything, you can say `\.{v-1}'.
+
+\Y\B\4\D$\\{show\_usage\_stats}$ \5
+\T{1}\C{ reports time and space usage }\par
+\B\4\D$\\{show\_compression\_stats}$ \5
+\T{2}\C{ reports details of \PB{\\{is\_ulam}} encoding }\par
+\B\4\D$\\{show\_histograms}$ \5
+\T{4}\C{ reports Ulams and misses mod $\lambda$ }\par
+\B\4\D$\\{show\_gap\_stats}$ \5
+\T{8}\C{ gives histogram and examples of every gap }\par
+\B\4\D$\\{show\_record\_gaps}$ \5
+\T{16}\C{ reports every gap that exceeded all predecessors }\par
+\B\4\D$\\{show\_record\_outliers}$ \5
+\T{32}\C{ reports outliers that exceeded earlier ones }\par
+\B\4\D$\\{show\_outlier\_details}$ \5
+\T{64}\C{ reports insertion or deletion of all outliers }\par
+\B\4\D$\\{show\_record\_cutoffs}$ \5
+\T{128}\C{ reports residue cutoffs for near outliers }\par
+\B\4\D$\\{show\_omitted\_inliers}$ \5
+\T{256}\C{ reports inliers that aren't near outliers }\par
+\B\4\D$\\{show\_brute\_winners}$ \5
+\T{512}\C{ reports unusual cases after brute-force trials }\par
+\B\4\D$\\{show\_inlier\_anchors}$ \5
+\T{1024}\C{ reports cases when two inliers make Ulam }\par
+\fi
+
+\M{4}Here then is an outline of the whole program:
+
+\Y\B\4\D$\|o$ \5
+$\\{mems}\PP{}$\C{ count one mem (one access to or from 64 bits of memory) }\par
+\B\4\D$\\{oo}$ \5
+$\\{mems}\MRL{+{\K}}{}$\T{2}\C{ count two mems }\par
+\B\4\D$\\{ooo}$ \5
+$\\{mems}\MRL{+{\K}}{}$\T{3}\C{ count three mems }\par
+\B\4\D$\|O$ \5
+\.{"\%"}\C{ used for percent signs in format strings }\par
+\B\4\D$\mod$ \5
+$\MOD{}$\C{ used for percent signs denoting remainder in \CEE/ }\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\8\#\&{include} \.{<time.h>}\6
+\&{typedef} \&{unsigned} \&{char} \&{uchar};\C{ a convenient abbreviation }\6
+\&{typedef} \&{unsigned} \&{int} \&{uint};\C{ ditto }\6
+\&{typedef} \&{unsigned} \&{long} \&{long} \&{ullng};\C{ ditto }\7
+\X9:Type definitions\X\6
+\X6:Global variables\X\6
+\X10:Subroutines\X\7
+\\{main}(\&{int} \\{argc}${},\39{}$\&{char} ${}{*}\\{argv}[\,]){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|i${},{}$ \|j${},{}$ \|k${},{}$ \|r${},{}$ \\{rp}${},{}$ %
+\|t${},{}$ \|x${},{}$ \|y${},{}$ \\{hits}${},{}$ \\{count};\6
+\&{register} \&{ullng} \|n${},{}$ \|u${},{}$ \\{up};\7
+\X5:Process the command line\X;\6
+\X16:Allocate the arrays\X;\6
+\X17:Initialize the data structures\X;\6
+\&{for} ${}(\|u\K\T{3};{}$ ${}\|n<\\{maxn};{}$ ${}\|u\PP){}$\1\5
+\X32:Decide whether \PB{\|u} is an Ulam number or an Ulam miss or neither, and
+update the data structures accordingly\X;\2\6
+\&{if} (\\{mp\_file})\1\5
+\X56:Output the \MP\ file\X;\2\6
+\4\\{finish\_up}:\5
+\X51:Print farewell messages\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{5}If a command-line parameter is specified twice, the first one wins.
+
+\Y\B\4\X5:Process the command line\X${}\E{}$\6
+\&{if} ${}(\\{argc}\E\T{1}){}$\1\5
+${}\|k\K\T{1};{}$\2\6
+\&{else}\5
+${}\{{}$\1\6
+${}\|k\K\\{sscanf}(\\{argv}[\\{argc}-\T{1}],\39\.{""}\|O\.{"lld"},\39{\AND}%
+\\{maxn})-\T{1}{}$;\C{ read $N$ }\6
+\&{for} ${}(\|j\K\\{argc}-\T{2};{}$ \|j; ${}\|j\MM){}$\1\6
+\&{switch} (\\{argv}[\|j][\T{0}])\5
+${}\{{}$\1\6
+\X7:Respond to a command-line option, setting \PB{\|k} nonzero on error\X;\6
+\4\&{default}:\5
+${}\|k\K\T{1}{}$;\C{ unrecognized command-line option }\6
+\4${}\}{}$\2\2\6
+\4${}\}{}$\2\6
+\X8:If there's a problem, print a message about \.{Usage:} and \PB{\\{exit}}\X;%
+\par
+\U4.\fi
+
+\M{6}\B\X6:Global variables\X${}\E{}$\6
+\&{ullng} \\{maxn};\C{ desired number of Ulams to compute }\6
+\&{int} \\{vbose}${}\K\\{show\_usage\_stats}{}$;\C{ level of verbosity }\6
+\&{uint} \\{lamp}${}\K\T{120500181}{}$;\C{ numerator of $\lambda$ }\6
+\&{uint} \\{lamq}${}\K\T{49315733}{}$;\C{ denominator of $\lambda$ }\6
+\&{ullng} \\{spacing};\C{ spacing between outputs; 0 means give only the last }%
+\6
+\&{ullng} \\{misses};\C{ we've seen these many Ulam misses }\6
+\&{int} \\{biggestgap}${}\K\T{1}{}$;\C{ the largest gap seen so far }\6
+\&{int} \\{maxgap}${}\K\T{2000}{}$;\C{ the largest gap for which we keep
+histogram data }\6
+\&{int} \\{outliers}${}\K\T{1000000}{}$;\C{ maximum number of outliers and
+near-outliers to remember }\6
+\&{int} \\{isize}${}\K\T{100000}{}$;\C{ total size of the two indexes (is
+always even) }\6
+\&{double} \\{thresh}${}\K\T{100}{}$;\C{ threshold for remembering a
+near-outlier }\6
+\&{ullng} \\{mems}${},{}$ \\{last\_mems};\C{ mem count }\6
+\&{clock\_t} \\{last\_clock};\C{ the last time we called \PB{\\{clock}(\,)} }\6
+\&{ullng} \\{bytes};\C{ memory used by main data structures }\6
+\&{int} \\{bits\_per\_compressed\_byte}${}\K\T{18}{}$;\C{ packing parameter }\6
+\&{int} \\{uncompressed\_bytes}${}\K\T{18000}{}$;\C{ this many initial \PB{%
+\\{is\_ulam}} bits not packed }\6
+\&{ullng} \\{window\_size}${}\K\T{1000000}{}$;\C{ we remember this many
+previous Ulams }\6
+\&{FILE} ${}{*}\\{mp\_file}{}$;\C{ file for optional output of \MP\ code }\6
+\&{char} ${}{*}\\{mp\_name}{}$;\C{ its name }\par
+\As15, 25, 35, 45\ETs57.
+\U4.\fi
+
+\M{7}\B\X7:Respond to a command-line option, setting \PB{\|k} nonzero on error%
+\X${}\E{}$\6
+\4\&{case} \.{'v'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{vbose})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'p'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"u"},\39{%
+\AND}\\{lamp})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'q'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"u"},\39{%
+\AND}\\{lamq})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'m'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"lld"},\39{%
+\AND}\\{spacing})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'g'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{maxgap})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'o'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{outliers})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'i'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{isize})-\T{1});{}$\6
+${}\\{isize}\K(\\{isize}+\T{1})\AND{-}\T{2}{}$;\5
+\&{break};\C{ round \PB{\\{isize}} up to nearest even number }\6
+\4\&{case} \.{'T'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"lg"},\39{%
+\AND}\\{thresh})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'b'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{bits\_per\_compressed\_byte})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'B'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{uncompressed\_bytes})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'w'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"lld"},\39{%
+\AND}\\{window\_size})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'M'}:\5
+${}\\{mp\_name}\K\\{argv}[\|j]+\T{1},\39\\{mp\_file}\K\\{fopen}(\\{mp\_name},%
+\39\.{"w"});{}$\6
+\&{if} ${}(\R\\{mp\_file}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ I\ can't\ open}\)\.{\ file\ `"}\|O%
+\.{"s'\ for\ writing!\\n"},\39\\{mp\_name});{}$\2\6
+\&{break};\par
+\U5.\fi
+
+\M{8}\B\X8:If there's a problem, print a message about \.{Usage:} and \PB{%
+\\{exit}}\X${}\E{}$\6
+\&{if} ${}(\|k\V\\{uncompressed\_bytes}<\T{3}\V\\{uncompressed\_bytes}\mod%
+\\{bits\_per\_compressed\_byte}\V\3{-1}(\\{lamp}-\T{1})/\\{lamq}\I\T{2}\V%
+\\{window\_size}<\T{3}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Usage:\ "}\|O\.{"s\ [v<n>]\ [p<n>]\ [q<}\)%
+\.{n>]\ [m<n>]\ [g<n>]\ [o}\)\.{<n>]\ [i<n>]"},\39\\{argv}[\T{0}]);{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ [T<f>]\ [b<n>]\ [B<n}\)\.{>]\ [w<n>]\
+[Mfoo.mp]\ }\)\.{N\\n"});{}$\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\par
+\U5.\fi
+
+\M{9}Statistics about important loop counts are kept in \&{stat} structures.
+
+\Y\B\4\X9:Type definitions\X${}\E{}$\6
+\&{typedef} \&{struct} ${}\{{}$\1\6
+\&{ullng} \|n;\C{ the number of samples }\6
+\&{float} \\{mean};\C{ the empirical mean }\6
+\&{int} \\{max};\C{ the empirical maximum }\6
+\&{ullng} \\{ex};\C{ the extreme example that led to \PB{\\{max}} }\2\6
+${}\}{}$ \&{stat};\par
+\A24.
+\U4.\fi
+
+\M{10}\B\X10:Subroutines\X${}\E{}$\6
+\&{void} \\{record\_stat}(\&{stat} ${}{*}\|s,\39{}$\&{int} \\{datum}${},\39{}$%
+\&{ullng} \|u)\5
+${}\{{}$\1\6
+\&{if} ${}(\|s\MG\|n\E\T{0}){}$\1\5
+${}\|s\MG\|n\K\T{1},\39\|s\MG\\{mean}\K{}$(\&{float}) \\{datum}${},\39\|s\MG%
+\\{max}\K\\{datum},\39\|s\MG\\{ex}\K\|u;{}$\2\6
+\&{else}\5
+${}\{{}$\1\6
+${}\|s\MG\|n\PP;{}$\6
+${}\|s\MG\\{mean}\MRL{+{\K}}{}$((\&{float}) \\{datum}${}-\|s\MG\\{mean})/{}$((%
+\&{float}) \|s${}\MG\|n);{}$\6
+\&{if} ${}(\\{datum}>\|s\MG\\{max}){}$\1\5
+${}\|s\MG\\{max}\K\\{datum},\39\|s\MG\\{ex}\K\|u;{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\As18, 28, 29\ETs30.
+\U4.\fi
+
+\N{1}{11}The ideas behind the algorithm.
+Gibbs's method is based on the amazing fact that almost all of the
+values $(U_n/\lambda)\mod 1$ lie between 1/3 and 2/3.
+Indeed, here's one of the pictures produced by the \MP\ option of this
+program, showing the distribution of those residues for $1\le n\le N=1000000$:
+$$ \vcenter{\epsfbox{ulam-gibbs.1}}$$
+The colors range from green for small~$n$ to red for $n$ near~$N$, so we
+can see the way things ``settle down'' to a fairly stable
+distribution as $n$ grows.
+
+Let $U$ be an integer, and let $\rho=(U/\lambda)\mod1$ be its associated
+residue. We might as well assume that the quasi-period length $\lambda$
+is irrational, since ``God wouldn't have wanted a rational number that
+occurs in problems like this to have a really big denominator.''
+Under that assumption, $\rho$ is never a rational number, and
+$\rho\ne\rho'$ when $U\ne U'$. (Of course, we will actually do our
+calculations using a rational approximation to~$\lambda$; hence we'll
+run into many cases where $\rho=\rho'$.)
+
+Steinerberger found empirically
+in 2015 that $\rho_n$ lies between 1/4 and 3/4 for all known values
+of $U_n$, except for four cases:
+$U_2=2$, $\rho_2\approx.82$;
+$U_3=3$, $\rho_2\approx.23$;
+$U_{15}=47$, $\rho_{15}\approx.23$;
+$U_{20}=69$, $\rho_{20}\approx.24$.
+The reasons for this are unclear, but the facts speak for themselves.
+
+Gibbs went further and defined $U$ to be an `outlier' if $\rho<1/3$
+or $\rho>2/3$. He observed that there must be infinitely many outliers,
+because the sum of two `inliers' cannot be an `inlier'. But he
+conjectured that, for any $\epsilon>0$, there are only finitely many~$n$
+with $\rho_n<1/3-\epsilon$ or $\rho_n>2/3+\epsilon$.
+And he observed that in the vast majority of known cases, the unique
+representation $U_n=U_i+U_j$ has the property that
+either $U_i$ or $U_j$ is an outlier.
+
+Let's pursue this further. If $U=U'+U''$, then we have either
+$\rho=\rho'+\rho''$ or $\rho=\rho'+\rho''-1$. The second case can
+be written $\bar\rho=\bar\rho'+\bar\rho''$, where $\bar\rho=1-\rho$.
+
+If $\rho<1/4$ or $\rho>3/4$, it turns out that we can almost always find
+two completely different representations of $U$ as a sum of two Ulam
+numbers, using a short brute-force search.
+
+On the other hand, if $1/4<\rho<3/4$,
+we can usually decide whether $U$ is a sum of Ulam numbers $U'+U''$
+by looking at relatively few cases where $\rho=\rho'+\rho''$
+and $\rho'<\rho''$ or $\bar\rho=\bar\rho'+\bar\rho''$ and
+$\bar\rho'<\bar\rho''$. Gibbs discovered empirically that it suffices to
+try cases where $U'$ is either an outlier
+or a `near outlier', where the latter is defined by the condition
+$$
+\hbox{$\rho'<1/2$ and $(\rho'-1/3)\sqrt{U'}\le\theta$}\qquad\hbox{or}\qquad
+\hbox{$\bar\rho'<1/2$ and $(\bar\rho'-1/3)\sqrt{U'}\le\theta$}$$
+and $\theta$ is the thresh parameter \PB{\\{thresh}} in our program.
+If $U'$ is large and $\rho'>1/3$, we won't need to consider $U'$ unless
+$\rho'$ is {\it extremely\/} close to~1/3.
+
+Consequently we needn't remember detailed information about too many
+of the Ulam numbers already computed. The brute-force search requires
+only a reasonably small window; the other searches require only
+a dictionary of outliers and near-outliers~$U'$, sorted by $\rho'$.
+
+\fi
+
+\M{12}Besides those relatively short tables, we also need a way to
+determine whether or not a given number $u\le U_N$ is an Ulam number.
+It's known empirically that $U_N\approx 13.5178N$, with minor
+fluctuations; thus we can safely assume that $U_N<14N$, and
+a table of $14N$ bits will suffice.
+
+Still, $14N$ bits is $1.75N$ bytes, which can be substantial
+when $N$ is many billions. Gibbs was working with just 16 gigabytes
+of memory, and necessity was the mother of invention:
+He devised a way to reduce this storage requirement
+to only $.778N$ bytes, by packing 18 bits into a single byte. This reduction
+turned out to be possible, and even convenient,
+because the bit patterns have somewhat low entropy.
+In fact, at most 256 different patterns actually occur in the \PB{\\{is\_ulam}}
+table
+for 18 consecutive values of~$n$, provided that $n$ is large enough
+to make the quasi-periodic system relatively stable.
+
+\fi
+
+\M{13}Gibbs's early program used floating-point arithmetic to compute
+the residues~$\rho$. But that led to tricky cases and subtle problems.
+Then he realized that rational approximations to $\lambda$ are able to avoid
+rounding errors, and his program became simpler besides.
+
+He found a good approximation to $\lambda$ empirically, by adjusting it
+until the number of ``low'' outliers with $\rho<1/3$ was essentially equal to
+the number of ``high'' outliers with $\rho>2/3$. This value was
+$$\lambda\;\approx\;2.443442967784743,$$
+with the next digits as yet undetermined. Consequently the
+regular continued fraction is
+$$\lambda\;=\;
+2+\bslash 2,3,1,11,1,1,4,1,1,7,1,2,1,1,2,2,1,3,1,2,\ldots{}\bslash,$$
+using the notation of {\sl Seminumerical Algorithms}, \S4.5.3.
+Truncating this continued fraction gives good rational approximations
+to~$\lambda$; in fact they're the ``best possible'' such approximations,
+according to the theorem of Lagrange in exercise 4.5.3--42:
+$$2;\quad
+{5\over2};\quad
+{17\over7};\quad
+{22\over9};\quad
+{259\over106};\quad
+{281\over115};\quad
+{540\over221};\quad
+{2441\over999};\quad
+\ldots;\quad
+{35876494\over14682763};\quad
+{84623687\over34632970}\hbox{ or }
+{120500181\over49315733}.$$
+The latter two seem to bracket the true value of $\lambda$. The final one
+is the current default, but the other one will probably give equally good
+results.
+
+When we use the approximation $\lambda=p/q$, the formula $\rho
+=U/\lambda\mod1$ becomes transformed:
+$$r\;=\;qU\mod p.$$
+The residue is now an {\it integer\/} called $r$, and it lies between 0 and
+$p-1$, instead of being a fraction $\rho$ between 0 and~1.
+(Program variables \PB{\\{lamp}} and \PB{\\{lamq}} correspond to $p$ and $q$.)
+
+\fi
+
+\M{14}These ideas may be easiest to absorb if we work first with small
+numbers. Suppose $p=22$ and $q=9$; this gives a fairly decent
+approximation $2.4444\ldots\,$ to $\lambda$. The first 100 values
+of $r_n=9U_n\mod22$ turn out to be nicely concentrated:
+$$\displaylines{\quad
+\{5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9,
+\hfill\cr\hfill
+10, 10, 10, 10, 10, 10,
+10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+11, 12, 12,
+12, 12, 12, 12, 12, 12,
+\hfill\cr\hfill
+12, 12, 12, 12, 12, 12, 12, 13, 13,
+13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 16, 16,
+18\}.\quad\cr}$$
+Using the better approximation $\lambda\approx540/221=2.44344\ldots\,$,
+$r_n=221U_n\mod540$ gives more detail:
+$$\displaylines{\quad
+\{123, 127, 129, 148, 166, 173, 176, 177, 182, 185,
+185, 189, 198, 202, 202, 204, 206, 206, 208, 209,
+\hfill\cr\hfill
+210, 211, 217, 218, 220, 221, 222, 225, 227, 230,
+233, 234, 235, 237, 241, 242, 243, 244, 246, 246,
+\hfill\cr\hfill
+248  248, 249, 252, 252, 258, 261, 262, 265, 271,
+277, 278, 279, 282, 289, 293, 296, 298, 299, 301,
+\hfill\cr\hfill
+302, 303, 306, 308, 308, 309, 311, 316, 318, 324,
+325, 327, 327, 330, 331, 332, 334, 335, 336, 337,
+\hfill\cr\hfill
+339, 341, 342, 344, 344, 346, 346, 348, 354, 360,
+363, 373, 376, 377, 380, 393, 396, 399, 402, 442\}.\quad\cr}$$
+The outliers for $\lambda=540/221$ have $r<180$ or $r\ge360$.
+Note that $U_{100}=690$.
+
+\fi
+
+\N{1}{15}The compression scheme.
+Let's build up some confidence by beginning to write low-level
+routines for the \PB{\\{is\_ulam}} table. That table consists of two parts:
+For $0\le n<\PB{\\{uncompressed\_bytes}}$, we simply have \PB{$\\{is\_ulam}[%
+\|n]\K\T{1}$}
+when \PB{\|n} is an Ulam number, \PB{$\\{is\_ulam}[\|n]\K\T{0}$} when it isn't.
+But for \PB{$\|n\G\\{uncompressed\_bytes}$}, a compressed table called
+\PB{\\{is\_um}} contains the necessary information in a lightly encoded form.
+
+Namely, let \PB{$\|b\K\\{bits\_per\_compressed\_byte}$} be the \.b option on
+the
+command line (normally~18). Then \PB{$\\{is\_um}[\|n/\|b]$} will be a byte~\PB{%
+\|t}
+such that \PB{\\{is\_ulam}[\|n]} appears as bit $n\mod b$ of~\PB{\\{code}[%
+\|t]}.
+This convention applies for $\PB{\\{uncompressed\_bytes}}\le n<\PB{\\{cur%
+\_slot}}$,
+where \PB{\\{cur\_slot}} is $b\times\lfloor u/b\rfloor$ and \PB{\|u} is the
+number
+that we're currently examining. Finally, the \PB{\\{is\_ulam}} bits for
+\PB{\|b} numbers beginning at \PB{\\{cur\_slot}} are maintained as the
+\PB{\|b}-bit number \PB{\\{cur\_code}}.
+
+Of course we must give up if more than 256 different codewords are needed.
+Auxiliary tables are maintained to provide further information:
+\PB{\\{code\_use}[\|t]} records the number of times we've used \PB{\\{code}[%
+\|t]};
+\PB{\\{code\_example}[\|t]} records the smallest \PB{\\{cur\_slot}} that needed
+\PB{\\{code}[\|t]}.
+Such information is maintained behind the scenes, although I could
+have omitted \PB{\\{code\_use}} and \PB{\\{code\_example}} if I were going all
+out for
+speed. Their values are always calculated, but
+reported only if \PB{\\{show\_compression\_stats}} is selected.
+
+The \PB{\\{is\_um}} table accounts for most of the memory required by
+this program. It occupies $\lceil 14\PB{\\{maxn}}/b\rceil$ bytes,
+because $14\PB{\\{maxn}}$ is an upper bound on the numbers~\PB{\|u} that
+we need to consider. (Notice that the first \PB{$\\{uncompressed\_bytes}/\|b$}
+of \PB{\\{is\_um}} are never used.
+That's a small price to pay for ease of programming.)
+
+\Y\B\4\X6:Global variables\X${}\mathrel+\E{}$\6
+\&{uchar} ${}{*}\\{is\_ulam},{}$ ${}{*}\\{is\_um}{}$;\C{ the main arrays for
+ulamness tests }\6
+\&{ullng} \\{cur\_sl};\C{ this many bytes of \PB{\\{is\_um}} have been set
+correctly }\6
+\&{ullng} \\{cur\_slot};\C{ \PB{$\\{bits\_per\_compressed\_byte}*\\{cur\_sl}$}
+}\6
+\&{uint} \\{cur\_code}${}\K\T{0}{}$;\C{ the next \PB{\\{bits\_per\_compressed%
+\_byte}} bits to be compressed }\6
+\&{uint} \\{code}[\T{256}];\C{ the expanded ``meaning'' of each compressed byte
+}\6
+\&{uchar} ${}{*}\\{inv\_code}{}$;\C{ inverse of the \PB{\\{code}} table }\6
+\&{int} \\{code\_ptr}${}\K\T{1}{}$;\C{ this many codes have been defined so far
+}\6
+\&{ullng} \\{code\_use}[\T{256}]${},{}$ \\{code\_example}[\T{256}];\C{ the \PB{%
+\\{code}} stats }\par
+\fi
+
+\M{16}Full disclosure:
+The number of memory bytes used, kept in \PB{\\{bytes}}, accounts only
+for necessary tables like \PB{\\{is\_ulam}}, \PB{\\{is\_um}}, and \PB{%
+\\{code}}. It doesn't
+mention the memory that is devoted to diagnostic data, in arrays
+such as \PB{\\{code\_use}} or \PB{\\{code\_example}}. Any memory allocated to
+the program itself, and to its atomic global variables,
+is also blithely ignored.
+
+I also ignore the cost of system calls to \PB{\\{malloc}} and \PB{\\{calloc}};
+the memory accesses that they make, while this program is
+launching itself, are not reported in \PB{\\{mems}}.
+
+\Y\B\4\D$\\{alloc\_quit}(\\{name},\\{size})$ \6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Couldn't\ allocate\ t}\)\.{he\ "}\|O\.{"s\
+array\ (size\ "}\|O\.{"lld)!\\n"},\3{-1}\39\\{name},\39{}$(\&{long} \&{long}) %
+\\{size});\6
+${}\\{exit}({-}\T{666});{}$\6
+\4${}\}{}$\2\par
+\Y\B\4\X16:Allocate the arrays\X${}\E{}$\6
+$\\{is\_ulam}\K{}$(\&{uchar} ${}{*}){}$ \\{malloc}${}(\\{uncompressed\_bytes}*%
+\&{sizeof}(\&{uchar}));{}$\6
+\&{if} ${}(\R\\{is\_ulam}){}$\1\5
+${}\\{alloc\_quit}(\.{"is\_ulam"},\39\\{uncompressed\_bytes});{}$\2\6
+${}\\{bytes}\MRL{+{\K}}\\{uncompressed\_bytes}*\&{sizeof}(\&{uchar});{}$\6
+${}\|u\K(\T{14}*\\{maxn}-\T{1})/\\{bits\_per\_compressed\_byte}+\T{1};{}$\6
+${}\\{is\_um}\K{}$(\&{uchar} ${}{*}){}$ \\{malloc}${}(\|u*\&{sizeof}(%
+\&{uchar}));{}$\6
+\&{if} ${}(\R\\{is\_um}){}$\1\5
+${}\\{alloc\_quit}(\.{"is\_um"},\39\|u);{}$\2\6
+${}\\{bytes}\MRL{+{\K}}\|u*\&{sizeof}(\&{uchar});{}$\6
+${}\\{inv\_code}\K{}$(\&{uchar} ${}{*}){}$ \\{calloc}${}(\T{1}\LL\\{bits\_per%
+\_compressed\_byte},\39\&{sizeof}(\&{uchar}));{}$\6
+\&{if} ${}(\R\\{inv\_code}){}$\1\5
+${}\\{alloc\_quit}(\.{"inv\_code"},\39\T{1}\LL\\{bits\_per\_compressed%
+\_byte});{}$\2\6
+${}\\{bytes}\MRL{+{\K}}(\T{1}\LL\\{bits\_per\_compressed\_byte})*\&{sizeof}(%
+\&{uchar});{}$\6
+${}\\{bytes}\MRL{+{\K}}\T{256}*\&{sizeof}(\&{uint}){}$;\C{ for the preallocated
+\PB{\\{code}} table }\par
+\As22, 26\ETs46.
+\U4.\fi
+
+\M{17}By definition, we know that $U_1=1$ and $U_2=2$. This gets us started.
+
+\Y\B\4\X17:Initialize the data structures\X${}\E{}$\6
+$\\{ooo},\39\\{is\_ulam}[\T{0}]\K\T{0},\39\\{is\_ulam}[\T{1}]\K\\{is\_ulam}[%
+\T{2}]\K\T{1};{}$\6
+${}\\{cur\_slot}\K\\{uncompressed\_bytes},\39\\{cur\_sl}\K\\{cur\_slot}/\\{bits%
+\_per\_compressed\_byte}{}$;\par
+\As27, 31, 36\ETs47.
+\U4.\fi
+
+\M{18}Here in detail is how we test the ulamness of a given \PB{\|x}. (We
+assume
+implicitly that \PB{\|x} is less than the current number~\PB{\|u}, and that
+\PB{\|u} is at most \PB{$\\{cur\_slot}+\\{bits\_per\_compressed\_byte}$}.)
+
+\Y\B\4\X10:Subroutines\X${}\mathrel+\E{}$\6
+\&{int} \\{ulamq}(\&{ullng} \|x)\5
+${}\{{}$\C{ returns nonzero if \PB{\|x} is an Ulam number }\1\6
+\&{register} \&{int} \|c${},{}$ \|r${},{}$ \|t;\6
+\&{register} \&{ullng} \|q;\7
+\&{if} ${}(\|x\G\\{cur\_slot}){}$\1\5
+\&{return} ${}(\\{cur\_code}\AND(\T{1}\LL(\|x-\\{cur\_slot})));{}$\2\6
+\&{if} ${}(\|x<\\{uncompressed\_bytes}){}$\1\5
+\&{return} \\{is\_ulam}[\|x];\2\6
+${}\|q\K\|x/\\{bits\_per\_compressed\_byte},\39\|r\K\|x\mod\\{bits\_per%
+\_compressed\_byte};{}$\6
+${}\|o,\39\|c\K\\{is\_um}[\|q];{}$\6
+${}\|o,\39\|t\K\\{code}[\|c];{}$\6
+\&{return} \|t${}\AND(\T{1}\LL\|r);{}$\6
+\4${}\}{}$\2\par
+\fi
+
+\M{19}When we've decided the ulamness of \PB{\|u}, we enter it into the
+tables in the following way.
+
+\Y\B\4\X19:Record \PB{\\{ulamness}} in the \PB{\\{is\_ulam}} or \PB{\\{is\_um}}
+table\X${}\E{}$\6
+\&{if} ${}(\|u<\\{cur\_slot}){}$\1\5
+${}\|o,\39\\{is\_ulam}[\|u]\K\\{ulamness};{}$\2\6
+\&{else} \&{if} ${}(\|u\E\\{cur\_slot}+\\{bits\_per\_compressed\_byte}){}$\1\5
+\X20:Store \PB{\\{cur\_code}} and get ready for another\X\2\6
+\&{else} \&{if} (\\{ulamness})\1\5
+${}\\{cur\_code}\MRL{+{\K}}\T{1}\LL\|u-\\{cur\_slot}{}$;\2\par
+\U32.\fi
+
+\M{20}We always have \PB{$\\{code}[\T{0}]\K\T{0}$}.
+
+\Y\B\4\X20:Store \PB{\\{cur\_code}} and get ready for another\X${}\E{}$\6
+${}\{{}$\1\6
+${}\|o,\39\|t\K\\{inv\_code}[\\{cur\_code}];{}$\6
+\&{if} ${}(\R\|t){}$\5
+${}\{{}$\1\6
+\&{if} (\\{cur\_code})\1\5
+\X21:Define a new code \PB{\|t}\X\2\6
+\&{else} \&{if} ${}(\R\\{code\_example}[\T{0}]){}$\1\5
+${}\\{code\_example}[\T{0}]\K\\{cur\_slot};{}$\2\6
+\4${}\}{}$\2\6
+${}\|o,\39\\{is\_um}[\\{cur\_sl}]\K\|t;{}$\6
+${}\\{code\_use}[\|t]\PP{}$;\C{ no mem charged for diagnostic stats }\6
+${}\\{cur\_sl}\PP,\39\\{cur\_slot}\MRL{+{\K}}\\{bits\_per\_compressed%
+\_byte};{}$\6
+${}\\{cur\_code}\K\\{ulamness};{}$\6
+\4${}\}{}$\2\par
+\U19.\fi
+
+\M{21}\B\X21:Define a new code \PB{\|t}\X${}\E{}$\6
+${}\{{}$\1\6
+\&{if} ${}(\\{code\_ptr}\E\T{256}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Oops,\ we\ need\ more\ }\)\.{than\ 256\ codes!%
+\ You\ }\)\.{must\ decrease\ b.\\n"});{}$\6
+\&{goto} \\{finish\_up};\6
+\4${}\}{}$\2\6
+${}\|o,\39\|t\K\\{inv\_code}[\\{cur\_code}]\K\\{code\_ptr};{}$\6
+${}\\{code\_example}[\\{code\_ptr}]\K\\{cur\_slot}{}$;\C{ no mem charged }\6
+${}\|o,\39\\{code}[\\{code\_ptr}\PP]\K\\{cur\_code};{}$\6
+\4${}\}{}$\2\par
+\U20.\fi
+
+\N{1}{22}Remembering key Ulam numbers.
+Continuing at the low level, let's implement the other data structures
+that record important facts about the Ulam numbers we've seen.
+
+First there's the \PB{\\{window}} table, which is easy: It is simply a
+cyclic buffer for the most recent \PB{\\{window\_size}} Ulam numbers
+discovered.
+
+\Y\B\4\X16:Allocate the arrays\X${}\mathrel+\E{}$\6
+$\\{window}\K{}$(\&{ullng} ${}{*}){}$ \\{malloc}${}(\\{window\_size}*%
+\&{sizeof}(\&{ullng}));{}$\6
+\&{if} ${}(\R\\{window}){}$\1\5
+${}\\{alloc\_quit}(\.{"window"},\39\\{window\_size});{}$\2\6
+${}\\{bytes}\MRL{+{\K}}\\{window\_size}*\&{sizeof}(\&{ullng}){}$;\par
+\fi
+
+\M{23}We'll maintain the value \PB{$\\{nw}\K\|n\mod\\{window\_size}$}.
+
+\Y\B\4\X23:Place \PB{\|u} into the \PB{\\{window}}\X${}\E{}$\6
+$\|o,\39\\{window}[\\{nw}]\K\|u{}$;\par
+\U37.\fi
+
+\M{24}The other structures, which remember the outliers and near-outliers
+that have been discovered so far, are more interesting. We need to
+process those numbers in order of their residues.
+
+Gibbs introduced a special data structure for them, using an index into
+a doubly linked list. A similar but simpler structure is implemented here,
+with {\it two\/} indexes into two {\it singly\/} linked lists.
+
+The number of outliers and near-outliers is, fortunately, small enough
+that we needn't be too fussy about saving memory space when we store them.
+Each node of a search list has three fields: Two for the number itself
+and its residue; one for a link to the successor node.
+
+\Y\B\4\X9:Type definitions\X${}\mathrel+\E{}$\6
+\&{typedef} \&{struct} ${}\{{}$\1\6
+\&{ullng} \|u;\C{ an Ulam number }\6
+\&{int} \|r;\C{ its residue }\6
+\&{int} \\{next};\C{ pointer to the next node in order of \PB{\|r} }\2\6
+${}\}{}$ \&{node};\par
+\fi
+
+\M{25}There are two search lists: One for the outliers and near-outliers
+with small residues, and one for the outliers and near-outliers with
+large residues. In the latter we store the complementary residue
+$\bar r=p-r$ instead of~\PB{\|r} itself as the search key, because we'll be
+traversing each list in order of increasing keys.
+
+Nodes with the same \PB{\|r} key are ordered by their \PB{\|u} values.
+
+All nodes of these lists appear in the \PB{\\{nmem}} array, with their list
+heads
+\PB{\\{lo\_out}} and \PB{\\{hi\_out}} in positions 0 and~1.
+
+\Y\B\4\D$\\{bar}(\|r)$ \5
+$(\\{lamp}-(\|r){}$)\par
+\B\4\D$\\{lo\_out}$ \5
+\T{0}\par
+\B\4\D$\\{hi\_out}$ \5
+\T{1}\par
+\Y\B\4\X6:Global variables\X${}\mathrel+\E{}$\6
+\&{ullng} ${}{*}\\{window}{}$;\C{ a cyclic buffer that remembers recent Ulam
+numbers }\6
+\&{int} \\{nw};\C{ \PB{$\|n\mod\\{window\_size}$} }\6
+\&{node} ${}{*}\\{nmem}{}$;\C{ the nodes of binary search trees }\6
+\&{int} \\{node\_ptr}${}\K\T{2}{}$;\C{ this many nodes are in use }\6
+\&{uint} ${}{*}\\{inx}[\T{2}]{}$;\C{ indexes to the lists }\6
+\&{uint} \\{avail};\C{ head of the stack of available nodes }\6
+\&{stat} \\{ins\_stats}[\T{4}];\C{ statistics for insertion into the four trees
+}\par
+\fi
+
+\M{26}\B\X16:Allocate the arrays\X${}\mathrel+\E{}$\6
+$\\{nmem}\K{}$(\&{node} ${}{*}){}$ \\{malloc}${}((\T{2}+\\{outliers})*%
+\&{sizeof}(\&{node}));{}$\6
+\&{if} ${}(\R\\{nmem}){}$\1\5
+${}\\{alloc\_quit}(\.{"nmem"},\39\\{outliers});{}$\2\6
+${}\\{bytes}\MRL{+{\K}}(\T{2}+\\{outliers})*\&{sizeof}(\&{node});{}$\6
+${}\\{inx}[\T{0}]\K{}$(\&{uint} ${}{*}){}$ \\{malloc}${}((\\{isize}/\T{2}+%
+\T{1})*\&{sizeof}(\&{uint}));{}$\6
+\&{if} ${}(\R\\{inx}[\T{0}]){}$\1\5
+${}\\{alloc\_quit}(\.{"inx[0]"},\39\\{outliers});{}$\2\6
+${}\\{inx}[\T{1}]\K{}$(\&{uint} ${}{*}){}$ \\{malloc}${}((\\{isize}/\T{2}+%
+\T{1})*\&{sizeof}(\&{uint}));{}$\6
+\&{if} ${}(\R\\{inx}[\T{1}]){}$\1\5
+${}\\{alloc\_quit}(\.{"inx[1]"},\39\\{outliers});{}$\2\6
+${}\\{bytes}\MRL{+{\K}}(\\{isize}+\T{2})*\&{sizeof}(\&{uint}){}$;\par
+\fi
+
+\M{27}Lists are terminated either by the \PB{\\{null}} link~0 or by the \PB{%
+\\{danger}} link~1
+(which will be discussed below).
+Initially the lists are empty, and all index entries point to the list head,
+whose \PB{\|r}~field is~0.
+
+\Y\B\4\D$\\{null}$ \5
+\T{0}\C{ end of list }\par
+\B\4\D$\\{danger}$ \5
+\T{1}\C{ end of list that has been cut off }\par
+\Y\B\4\X17:Initialize the data structures\X${}\mathrel+\E{}$\6
+$\\{oo},\39\\{nmem}[\\{lo\_out}].\\{next}\K\\{null},\39\\{nmem}[\\{lo\_out}].%
+\|r\K\T{0};{}$\6
+${}\\{oo},\39\\{nmem}[\\{hi\_out}].\\{next}\K\\{null},\39\\{nmem}[\\{hi\_out}].%
+\|r\K\T{0};{}$\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i\Z\\{isize}/\T{2};{}$ ${}\|i\PP){}$\1\5
+${}\\{oo},\39\\{inx}[\T{0}][\|i]\K\\{lo\_out},\39\\{inx}[\T{1}][\|i]\K\\{hi%
+\_out};{}$\2\6
+${}\\{avail}\K\T{0}{}$;\par
+\fi
+
+\M{28}Here's now we insert new nodes into such a list. The key invariant is
+that,
+if key~\PB{\|r} causes us to start at index entry~\PB{\|j}, then every index
+$j'>j$ will be examined only for keys that are strictly greater than~\PB{\|r}.
+Therefore it is legal for them to point to the newly inserted node.
+
+This subroutine is called only when \PB{\|u} is larger than any of the \PB{%
+\|u}~fields
+already in the list.
+
+\Y\B\4\D$\\{insert}(\\{head},\|u,\|r)$ \6
+\&{if} ${}(\R\\{ins}(\\{head},\39\|u,\39\|r)){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Oh\ oh,\ there's\ outl}\)\.{ier\ overflow\
+(size="}\|O\.{"d)!\\n"},\39\\{outliers});{}$\6
+\&{goto} \\{finish\_up};\6
+\4${}\}{}$\2\par
+\Y\B\4\X10:Subroutines\X${}\mathrel+\E{}$\6
+\&{int} \\{ins}(\&{int} \\{head}${},\39{}$\&{ullng} \|u${},\39{}$\&{register} %
+\&{int} \|r)\5
+${}\{{}$\1\6
+\&{register} \&{int} \|j${},{}$ \|x${},{}$ \|y${},{}$ \|z${},{}$ \\{count};\7
+\&{if} (\\{avail})\1\5
+${}\|o,\39\|z\K\\{avail},\39\\{avail}\K\\{nmem}[\\{avail}].\\{next}{}$;\C{
+reuse a recycled node }\2\6
+\&{else} \&{if} ${}(\\{node\_ptr}<\T{2}+\\{outliers}){}$\1\5
+${}\|z\K\\{node\_ptr}\PP;{}$\2\6
+\&{else}\1\5
+\&{return} \T{0};\C{ there's no more room }\2\6
+${}\\{oo},\39\\{nmem}[\|z].\|u\K\|u,\39\\{nmem}[\|z].\|r\K\|r;{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_outlier\_details}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ (remembering\ "}\|O\.{"soutlier\ "}\|O%
+\.{"lld,\ "}\|O\.{"s="}\|O\.{"d)\\n"},\39\|r>\\{lamp}/\T{3}\?\.{"near-"}:%
+\.{""},\39\|u,\39\\{head}\E\\{hi\_out}\?\.{"rbar"}:\.{"r"},\39\|r);{}$\2\6
+${}\|j\K{}$((\&{ullng}) \|r${}*\\{isize})/\\{lamp};{}$\6
+${}\|o,\39\|x\K\\{inx}[\\{head}][\|j];{}$\6
+\&{for} ${}(\|o,\39\|y\K\\{nmem}[\|x].\\{next},\39\\{count}\K\T{1};{}$ ${}\|y>%
+\\{danger}\W(\|o,\39\\{nmem}[\|y].\|r\Z\|r);{}$ \|o${},\39\|x\K\|y,\39\|y\K%
+\\{nmem}[\|x].\\{next}){}$\1\5
+${}\\{count}\PP;{}$\2\6
+${}\\{oo},\39\\{nmem}[\|x].\\{next}\K\|z,\39\\{nmem}[\|z].\\{next}\K\|y;{}$\6
+\&{for} ${}(\|j\PP;{}$ ${}\|j\Z\\{isize}/\T{2};{}$ ${}\|j\PP,\39\\{count}%
+\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{oo},\39\\{nmem}[\\{inx}[\\{head}][\|j]].\|r>\|r){}$\1\5
+\&{break};\2\6
+${}\|o,\39\\{inx}[\\{head}][\|j]\K\|z;{}$\6
+\4${}\}{}$\2\6
+${}\\{record\_stat}({\AND}\\{ins\_stats}[\\{head}],\39\\{count},\39\|u);{}$\6
+\&{return} \T{1};\6
+\4${}\}{}$\2\par
+\fi
+
+\M{29}We will also sometimes discard a near-outlier, if it becomes more ``in''
+than a discarded inlier. This is where \PB{\\{danger}} creeps in to the data.
+
+Again, this subroutine is called only when \PB{\|u} is larger than any of the
+\PB{\|u}~fields already in the list.
+
+We will never insert items with residue \PB{$\G$ \|r} again, so there's no need
+to update the index.
+
+\Y\B\4\X10:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \&{delete} (\&{int} \\{head}${},\39{}$\&{ullng} \|u${},\39{}$%
+\&{register} \&{int} \|r)\5
+${}\{{}$\1\6
+\&{register} \&{int} \|j${},{}$ \|x${},{}$ \|y${},{}$ \\{count};\6
+\&{ullng} \\{uu};\7
+${}\|j\K{}$((\&{ullng}) \|r${}*\\{isize})/\\{lamp};{}$\6
+${}\|o,\39\|x\K\\{inx}[\\{head}][\|j];{}$\6
+\&{for} ${}(\|o,\39\|y\K\\{nmem}[\|x].\\{next},\39\\{count}\K\T{1};{}$ ${}\|y>%
+\\{danger}\W(\|o,\39\\{nmem}[\|y].\|r\Z\|r);{}$ \|o${},\39\|x\K\|y,\39\|y\K%
+\\{nmem}[\|x].\\{next}){}$\1\5
+${}\\{count}\PP;{}$\2\6
+${}\|o,\39\\{nmem}[\|x].\\{next}\K\\{danger}{}$;\C{ cut off all further
+elements }\6
+\&{if} ${}(\|y>\\{danger}){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|x\K\|y;{}$ \|o${},\39\\{nmem}[\|y].\\{next}>\\{danger};{}$ ${}%
+\\{count}\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{vbose}\AND\\{show\_outlier\_details}){}$\5
+${}\{{}$\1\6
+${}\|r\K\\{nmem}[\|y].\|r,\39\\{uu}\K\\{nmem}[\|y].\|u{}$;\C{ no mem charged
+for diagnostics }\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ (forgetting\ "}\|O\.{"soutlier\ "}\|O%
+\.{"lld,\ "}\|O\.{"s="}\|O\.{"d)\\n"},\39\|r>\\{lamp}/\T{3}\?\.{"near-"}:%
+\.{""},\39\\{uu},\39\\{head}\E\\{hi\_out}\?\.{"rbar"}:\.{"r"},\39\|r);{}$\6
+\4${}\}{}$\2\6
+${}\|y\K\\{nmem}[\|y].\\{next};{}$\6
+\4${}\}{}$\2\6
+${}\|o,\39\\{nmem}[\|y].\\{next}\K\\{avail},\39\\{avail}\K\|x;{}$\6
+\4${}\}{}$\2\6
+${}\\{record\_stat}({\AND}\\{ins\_stats}[\\{head}],\39\\{count},\39\|u);{}$\6
+\4${}\}{}$\2\par
+\fi
+
+\M{30}That index and link mechanism is somewhat tricky, so I'd better
+have a subroutine to check that it isn't messed up.
+
+\Y\B\4\D$\\{flag}$ \5
+\T{\^80000000}\C{ flag temporarily placed into the \PB{\\{next}} fields }\par
+\B\4\D$\\{panic}(\|m)$ \6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Oops,\ "}\|O\.{"s!\ (h="}\|O\.{"d,\ r="}\|O%
+\.{"d,\ j="}\|O\.{"d,\ x="}\|O\.{"d)\\n"},\39\|m,\39\|h,\39\|r,\39\|j,\39%
+\|x);{}$\6
+\&{return};\6
+\4${}\}{}$\2\par
+\Y\B\4\X10:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{sanity}(\&{void})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|h${},{}$ \|j${},{}$ \\{nextj}${},{}$ \|x${},{}$ %
+\|y${},{}$ \|r${},{}$ \\{lastr};\6
+\&{ullng} \|u${},{}$ \\{lastu};\7
+\&{for} ${}(\|h\K\\{lo\_out};{}$ ${}\|h\Z\\{hi\_out};{}$ ${}\|h\PP){}$\5
+${}\{{}$\1\6
+${}\\{lastr}\K\T{0},\39\\{lastu}\K\T{0},\39\|j\K\T{1};{}$\6
+\&{for} ${}(\|x\K\|h;{}$  ; ${}\|x\K\|y){}$\5
+${}\{{}$\1\6
+${}\|r\K\\{nmem}[\|x].\|r,\39\|u\K\\{nmem}[\|x].\|u,\39\|y\K\\{nmem}[\|x].%
+\\{next};{}$\6
+\&{if} ${}(\|r<\\{lastr}\V(\|r\E\\{lastr}\W\|u<\\{lastu})){}$\1\5
+\\{panic}(\.{"Out\ of\ order"});\2\6
+${}\\{nextj}\K{}$((\&{ullng}) \|r${}*\\{isize})/\\{lamp};{}$\6
+\&{for} ( ; ${}\|j\Z\\{nextj};{}$ ${}\|j\PP){}$\1\6
+\&{if} ${}(\R(\\{nmem}[\\{inx}[\|h][\|j]].\\{next}\AND\\{flag})){}$\1\5
+\\{panic}(\.{"Index\ bad"});\2\2\6
+${}\\{nmem}[\|x].\\{next}\K\|y+\\{flag};{}$\6
+\&{if} ${}(\|y\Z\\{danger}){}$\1\5
+\&{break};\2\6
+${}\\{lastr}\K\|r,\39\\{lastu}\K\|u;{}$\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|x\K\|h;{}$  ; ${}\|x\K\|y){}$\5
+${}\{{}$\1\6
+${}\|y\K\\{nmem}[\|x].\\{next}-\\{flag};{}$\6
+${}\\{nmem}[\|x].\\{next}\K\|y;{}$\6
+\&{if} ${}(\|y\Z\\{danger}){}$\1\5
+\&{break};\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{31}Our assumption that $\lfloor(p-1)/q\rfloor=2$ ensures that
+$U_1=1$ is a low near-outlier and that
+$U_2=2$ is a high outlier.
+
+Fine point: Since 1 and 2 cannot be expressed as a sum of distinct Ulam
+numbers,
+they are Ulam misses as well as Ulam numbers.
+
+\Y\B\4\X17:Initialize the data structures\X${}\mathrel+\E{}$\6
+$\\{oo},\39\\{window}[\T{1}]\K\T{1},\39\\{window}[\T{2}]\K\T{2};{}$\6
+${}\|n\K\\{nw}\K\\{misses}\K\T{2};{}$\6
+${}\\{insert}(\\{lo\_out},\39\T{1},\39\\{lamq});{}$\6
+${}\\{insert}(\\{hi\_out},\39\T{2},\39\\{bar}(\T{2}*\\{lamq}));{}$\6
+\&{if} ${}(\\{spacing}\E\T{1}){}$\1\5
+\\{printf}(\.{"U1=1\\n"});\2\6
+\&{if} ${}(\\{spacing}\E\T{1}\V\\{spacing}\E\T{2}){}$\1\5
+\\{printf}(\.{"U2=2\\n"});\2\par
+\fi
+
+\N{1}{32}The brute-force tests.
+Now we're ready to attack the main problem, which is to decide if
+the current number \PB{\|u} is an Ulam number, an Ulam miss, or neither.
+Gibbs's strategy, as stated above, is to do this in two different
+ways, depending on \PB{\|u}'s residue~\PB{\|r}. Half of the time,
+when \PB{$\|r\Z\\{lamp}/\T{4}$} or \PB{$\\{lamp}-\|r\Z\\{lamp}/\T{4}$}, a
+brute-force search using the
+previously windowed results will suffice.
+
+\Y\B\4\X32:Decide whether \PB{\|u} is an Ulam number or an Ulam miss or
+neither, and update the data structures accordingly\X${}\E{}$\6
+${}\{{}$\1\6
+\X33:Compute \PB{\|u}'s residue, \PB{\|r}\X;\6
+${}\\{hits}\K\T{0}{}$;\C{ this is the number of solutions we've found to
+$u=u'+u''$ }\6
+\&{if} ${}(\|r\Z\\{lamp}\GG\T{2}\V\\{bar}(\|r)\Z\\{lamp}\GG\T{2}){}$\1\5
+\X34:Decide the question via brute force\X\2\6
+\&{else}\1\5
+\X48:Decide the question via outlier testing\X;\2\6
+\4\\{ulam\_miss}:\5
+${}\\{misses}\PP;{}$\6
+${}\\{miss\_bin}[\|n/\\{alpha}][\|r/\\{beta}]\PP;{}$\6
+\4\\{not\_ulam}:\5
+${}\\{ulamness}\K\T{0};{}$\6
+\&{goto} \\{finish};\6
+\4\\{ulam\_yes}:\5
+${}\\{yes\_bin}[\|n/\\{alpha}][\|r/\\{beta}]\PP;{}$\6
+\X37:Record \PB{\|u} as the next Ulam number\X;\6
+${}\\{ulamness}\K\T{1};{}$\6
+\4\\{finish}:\5
+\X19:Record \PB{\\{ulamness}} in the \PB{\\{is\_ulam}} or \PB{\\{is\_um}} table%
+\X;\6
+\4${}\}{}$\2\par
+\U4.\fi
+
+\M{33}The residue must be computed in two steps, because \PB{$\\{lamq}*\|u$}
+will exceed
+64 bits when \PB{\|u} is sufficiently large.
+
+\Y\B\4\X33:Compute \PB{\|u}'s residue, \PB{\|r}\X${}\E{}$\6
+$\|r\K\|u\mod\\{lamp};{}$\6
+${}\|r\K(\\{lamq}*{}$(\&{ullng}) \|r)${}\mod\\{lamp}{}$;\par
+\U32.\fi
+
+\M{34}The brute-force search uses the simple idea that we can have
+$u=u'+u''$ with $u'>u''$ only if $u'>u/2$. So we look at the
+previously computed numbers $u'=U_n$, $U_{n-1}$, \dots, until
+we've either found two cases with $u-u'$ an Ulam number,
+or $u'$ is too small, or we run out of suitable numbers in the window.
+
+\Y\B\4\X34:Decide the question via brute force\X${}\E{}$\6
+${}\{{}$\1\6
+${}\|x\K\\{nw};{}$\6
+\&{for} ${}(\|o,\39\\{up}\K\\{window}[\|x],\39\\{count}\K\T{1};{}$ ${}\\{up}>(%
+\|u\GG\T{1});{}$ \|o${},\39\\{up}\K\\{window}[\|x]){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{ulamq}(\|u-\\{up})){}$\5
+${}\{{}$\C{ we found a new solution to $u=u'+u''$ }\1\6
+\&{if} (\\{hits})\5
+${}\{{}$\C{ \PB{\|u} not uniquely represented }\1\6
+${}\\{record\_stat}({\AND}\\{window\_stats},\39\\{count},\39\|u);{}$\6
+\&{goto} \\{not\_ulam};\6
+\4${}\}{}$\2\6
+${}\\{hits}\K\T{1};{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}(\PP\\{count}>\\{window\_size}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Oh\ oh,\ there's\ wind}\)\.{ow\ overflow\
+(size="}\|O\.{"lld)!\\n"},\39\\{window\_size});{}$\6
+\&{goto} \\{finish\_up};\6
+\4${}\}{}$\2\6
+\&{if} (\|x)\1\5
+${}\|x\MM{}$;\5
+\2\&{else}\1\5
+${}\|x\K\\{window\_size}-\T{1};{}$\2\6
+\4${}\}{}$\2\6
+${}\\{record\_stat}({\AND}\\{window\_stats},\39\\{count},\39\|u);{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_brute\_winners}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ (in\ brute-force\ ph}\)\.{ase,\ "}\|O\.{"lld%
+\ is\ an\ Ulam\ "}\|O\.{"s)\\n"},\39\|u,\39\\{hits}\?\.{"number"}:%
+\.{"miss"});{}$\2\6
+\&{if} (\\{hits})\1\5
+\&{goto} \\{ulam\_yes};\2\6
+\4${}\}{}$\2\par
+\U32.\fi
+
+\M{35}Histograms for the Ulam numbers and Ulam misses are kept in
+the arrays \PB{\\{yes\_bin}} and \PB{\\{miss\_bin}}, which are of size $16%
+\times128$.
+(The first index determines the color in the \MP\ illustrations;
+the second determines the percentage point in the range of~$r$.)
+
+\Y\B\4\D$\\{bincolors}$ \5
+\T{16}\par
+\B\4\D$\\{binsize}$ \5
+\T{128}\par
+\Y\B\4\X6:Global variables\X${}\mathrel+\E{}$\6
+\&{stat} \\{window\_stats};\C{ a record of window loop times }\6
+\&{ullng} \\{yes\_bin}[\\{bincolors}][\\{binsize}]${},{}$ \\{miss\_bin}[%
+\\{bincolors}][\\{binsize}];\6
+\&{ullng} \\{alpha};\C{ scale factor for the first index }\6
+\&{int} \\{beta};\C{ scale factor the second index }\par
+\fi
+
+\M{36}\B\X17:Initialize the data structures\X${}\mathrel+\E{}$\6
+$\\{alpha}\K((\\{maxn}-\T{1})/\\{bincolors})+\T{1},\39\\{beta}\K((\\{lamp}-%
+\T{1})/\\{binsize})+\T{1};{}$\6
+${}\\{yes\_bin}[\T{0}/\\{alpha}][\\{lamq}/\\{beta}]\K\T{1},\39\\{miss\_bin}[%
+\T{0}/\\{alpha}][\\{lamq}/\\{beta}]\K\T{1};{}$\6
+${}\\{yes\_bin}[\T{1}/\\{alpha}][(\T{2}*\\{lamq})/\\{beta}]\K\T{1},\39\\{miss%
+\_bin}[\T{1}/\\{alpha}][(\T{2}*\\{lamq})/\\{beta}]\K\T{1}{}$;\par
+\fi
+
+\N{1}{37}Absorbing a new Ulam number.
+When we've discovered that $U_{n+1}=u$, we celebrate in various ways.
+
+First we increase \PB{\|n} and put \PB{\|u} into the window.
+
+\Y\B\4\X37:Record \PB{\|u} as the next Ulam number\X${}\E{}$\6
+$\|n\PP,\39\\{nw}\PP;{}$\6
+\&{if} ${}(\\{nw}\E\\{window\_size}){}$\1\5
+${}\\{nw}\K\T{0};{}$\2\6
+\X23:Place \PB{\|u} into the \PB{\\{window}}\X;\par
+\As38, 43\ETs44.
+\U32.\fi
+
+\M{38}Next we must decide whether \PB{\|u} is an outlier or nearly so.
+
+\Y\B\4\X37:Record \PB{\|u} as the next Ulam number\X${}\mathrel+\E{}$\6
+\&{if} ${}(\|r\Z\\{lamp}/\T{3}){}$\1\5
+\X39:Record \PB{\|u} as a low outlier\X\2\6
+\&{else} \&{if} ${}(\|r\Z\\{lamp}/\T{2}){}$\1\5
+\X41:If \PB{\|u} is a low near-outlier, record it\X\2\6
+\&{else} \&{if} ${}(\\{bar}(\|r)\Z\\{lamp}/\T{3}){}$\1\5
+\X40:Record \PB{\|u} as a high outlier\X\2\6
+\&{else}\1\5
+\X42:If \PB{\|u} is a high near-outlier, record it\X;\2\par
+\fi
+
+\M{39}\B\X39:Record \PB{\|u} as a low outlier\X${}\E{}$\6
+${}\{{}$\1\6
+\&{if} ${}(\|r\Z\\{lowest\_outlier}){}$\5
+${}\{{}$\1\6
+${}\\{lowest\_outlier}\K\|r;{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_record\_outliers}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ (record\ low\ outlie}\)\.{r\ r="}\|O\.{"d,\
+u="}\|O\.{"lld)\\n"},\39\|r,\39\|u);{}$\2\6
+\4${}\}{}$\2\6
+${}\\{insert}(\\{lo\_out},\39\|u,\39\|r);{}$\6
+\4${}\}{}$\2\par
+\U38.\fi
+
+\M{40}\B\X40:Record \PB{\|u} as a high outlier\X${}\E{}$\6
+${}\{{}$\1\6
+\&{if} ${}(\|r\G\\{highest\_outlier}){}$\5
+${}\{{}$\1\6
+${}\\{highest\_outlier}\K\|r;{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_record\_outliers}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ (record\ high\ outli}\)\.{er\ r="}\|O\.{"d,\
+u="}\|O\.{"lld\\n"},\39\|r,\39\|u);{}$\2\6
+\4${}\}{}$\2\6
+${}\\{insert}(\\{hi\_out},\39\|u,\39\\{bar}(\|r));{}$\6
+\4${}\}{}$\2\par
+\U38.\fi
+
+\M{41}Gibbs's heuristic ``inness'' score, $(\rho-{1\over3})\sqrt{u}$
+when $\rho\le{1\over2}$, must be $T$ or less if \PB{\|u} is to be
+remembered as a low near-outlier. We know that $r\ge(p+1)/3$ at
+this point; hence $T/(\rho-1/3)=3Tp/(3r-p)\le 3Tp$.
+
+When we do {\it not\/} store \PB{\|u}, we must ensure that a mistake hasn't
+been made. So we will flag an error if any future search for
+a near-outlying ``anchor point'' would have encountered a number
+whose residue is greater than~\PB{\|r}, or equal to~\PB{\|r} with an
+associated value greater than~\PB{\|u}. (Because in such a case,
+the algorithm should have really encountered the number we're dropping.)
+
+Think about this carefully, because it's the most subtle point of the program!
+
+We prevent such errors by cutting off the search lists, and recognizing
+\PB{\\{danger}} when we encounter it.
+We also retain \PB{\\{lo\_r\_bound}}, remembering where cutoffs have previously
+occurred.
+
+\Y\B\4\X41:If \PB{\|u} is a low near-outlier, record it\X${}\E{}$\6
+${}\{{}$\1\6
+\&{register} \&{double} \|g${}\K\\{lampthresh}/((\&{ullng})(\T{3}*\|r-%
+\\{lamp}));{}$\7
+\&{if} ${}(\|u\G\|g*\|g){}$\5
+${}\{{}$\C{ {\it not\/} near, so we'll drop it }\1\6
+\&{if} ${}(\\{vbose}\AND\\{show\_omitted\_inliers}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ (omitting\ r="}\|O\.{"d,\ u="}\|O\.{"lld,\
+g="}\|O\.{"g)\\n"},\39\|r,\39\|u,\39\|g*\|g/\|u);{}$\2\6
+\&{if} ${}(\|r<\\{lo\_r\_bound}){}$\5
+${}\{{}$\1\6
+${}\\{lo\_r\_bound}\K\|r;{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_record\_cutoffs}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ (record\ low\ cutoff}\)\.{\ r="}\|O\.{"d,\
+u="}\|O\.{"lld,\ g="}\|O\.{"g)\\n"},\39\|r,\39\|u,\39\|g*\|g/\|u);{}$\2\6
+\&{delete} ${}(\\{lo\_out},\39\|u,\39\|r);{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\5
+\2\&{else} \&{if} ${}(\|r<\\{lo\_r\_bound}){}$\1\5
+${}\\{insert}(\\{lo\_out},\39\|u,\39\|r);{}$\2\6
+\4${}\}{}$\2\par
+\U38.\fi
+
+\M{42}\B\X42:If \PB{\|u} is a high near-outlier, record it\X${}\E{}$\6
+${}\{{}$\1\6
+\&{register} \&{double} \|g${}\K\\{lampthresh}/((\&{ullng})(\T{3}*\\{bar}(\|r)-%
+\\{lamp}));{}$\7
+\&{if} ${}(\|u\G\|g*\|g){}$\5
+${}\{{}$\C{ {\it not\/} near, so we'll drop it }\1\6
+\&{if} ${}(\\{vbose}\AND\\{show\_omitted\_inliers}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ (omitting\ rbar="}\|O\.{"d,\ u="}\|O\.{"lld,%
+\ g="}\|O\.{"g)\\n"},\39\\{bar}(\|r),\39\|u,\39\|g*\|g/\|u);{}$\2\6
+\&{if} ${}(\\{bar}(\|r)<\\{hi\_r\_bound}){}$\5
+${}\{{}$\1\6
+${}\\{hi\_r\_bound}\K\\{bar}(\|r);{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_record\_cutoffs}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ (record\ high\ cutof}\)\.{f\ rbar="}\|O%
+\.{"d,\ u="}\|O\.{"lld,\ g="}\|O\.{"g)\\n"},\39\\{bar}(\|r),\39\|u,\39\|g*\|g/%
+\|u);{}$\2\6
+\&{delete} ${}(\\{hi\_out},\39\|u,\39\\{bar}(\|r));{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\5
+\2\&{else} \&{if} ${}(\\{bar}(\|r)<\\{hi\_r\_bound}){}$\1\5
+${}\\{insert}(\\{hi\_out},\39\|u,\39\\{bar}(\|r));{}$\2\6
+\4${}\}{}$\2\par
+\U38.\fi
+
+\M{43}Next we look at the gap between \PB{\|u} and the previous Ulam number, %
+\PB{\\{prevu}}.
+
+\Y\B\4\X37:Record \PB{\|u} as the next Ulam number\X${}\mathrel+\E{}$\6
+$\|j\K\|u-\\{prevu};{}$\6
+\&{if} ${}(\|j>\\{maxgap}){}$\1\5
+${}\\{gapcount}[\\{maxgap}+\T{1}]\PP;{}$\2\6
+\&{else}\1\5
+${}\\{gapcount}[\|j]\PP;{}$\2\6
+\&{if} ${}(\|j\G\\{biggestgap}){}$\5
+${}\{{}$\1\6
+${}\\{biggestgap}\K\|j;{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_record\_gaps}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ (gap\ "}\|O\.{"d\ =\ U"}\|O\.{"lld-U"}\|O%
+\.{"lld,\ U"}\|O\.{"lld="}\|O\.{"lld)\\n"},\39\|j,\39\|n,\39\|n-\T{1},\39\|n-%
+\T{1},\39\\{prevu});{}$\2\6
+\4${}\}{}$\2\6
+${}\\{prevu}\K\|u{}$;\par
+\fi
+
+\M{44}Finally, we report \PB{\|u} itself, if \PB{\|n} is a multiple of \PB{%
+\\{spacing}}.
+Other statistics are also printed to \PB{\\{stderr}}, if requested.
+
+\Y\B\4\X37:Record \PB{\|u} as the next Ulam number\X${}\mathrel+\E{}$\6
+\&{if} ${}(\\{spacing}\W(\|n\mod\\{spacing}\E\T{0})){}$\5
+${}\{{}$\1\6
+\&{register} \&{clock\_t} \|t${}\K\\{clock}(\,);{}$\7
+${}\\{printf}(\.{"U"}\|O\.{"lld="}\|O\.{"lld\\n"},\39\|n,\39\|u);{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_usage\_stats}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ ("}\|O\.{"lld\ misses,\ "}\|O\.{"lld\ mems,\
+"}\|O\.{".2f\ sec)\\n"},\39\\{misses}-\\{prevmisses},\39\\{mems}-\\{prevmems},%
+\39(\&{double})(\|t-\\{prevclock})/{}$(\&{double}) \.{CLOCKS\_PER\_SEC});\2\6
+${}\\{prevmisses}\K\\{misses},\39\\{prevmems}\K\\{mems},\39\\{prevclock}\K%
+\|t;{}$\6
+\4${}\}{}$\2\par
+\fi
+
+\M{45}We'd better declare the variables that we've been using.
+
+\Y\B\4\X6:Global variables\X${}\mathrel+\E{}$\6
+\&{double} \\{lampthresh};\C{ \PB{$\\{lamp}*\\{thresh}$} }\6
+\&{int} \\{lowest\_outlier}${},{}$ \\{highest\_outlier};\C{ extreme outliers }\6
+\&{ullng} \\{prevu};\C{ the Ulam number most recently found }\6
+\&{ullng} ${}{*}\\{gapcount}{}$;\C{ how often each gap has occurred }\6
+\&{int} \\{rbound}${},{}$ \\{rbarbound};\C{ search limits on the residue }\6
+\&{ullng} \\{ubound};\C{ search limits on the value, when residue is max }\6
+\&{int} \\{anchorx};\C{ the node corresponding to the unique $u'$ with
+$u=u'+u''$ }\6
+\&{int} \\{lo\_r\_bound}${},{}$ \\{hi\_r\_bound};\C{ residues at which we've
+cut data off }\6
+\&{ullng} \\{prevmisses};\C{ the number of misses most recently reported }\6
+\&{ullng} \\{prevmems};\C{ the number of mems most recently reported }\6
+\&{clock\_t} \\{prevclock};\C{ the number of microseconds most recently
+reported }\6
+\&{stat} \\{lo\_out\_stats}${},{}$ \\{hi\_out\_stats};\6
+\&{int} \\{ulamness};\C{ is \PB{\|u} an Ulam number? }\par
+\fi
+
+\M{46}\B\X16:Allocate the arrays\X${}\mathrel+\E{}$\6
+$\\{gapcount}\K{}$(\&{ullng} ${}{*}){}$ \\{malloc}${}((\\{maxgap}+\T{2})*%
+\&{sizeof}(\&{ullng}));{}$\6
+\&{if} ${}(\R\\{gapcount}){}$\1\5
+${}\\{alloc\_quit}(\.{"gapcount"},\39\\{maxgap});{}$\2\6
+${}\\{bytes}\MRL{+{\K}}(\\{maxgap}+\T{2})*\&{sizeof}(\&{ullng}){}$;\par
+\fi
+
+\M{47}And we'd better initialize them too.
+
+\Y\B\4\X17:Initialize the data structures\X${}\mathrel+\E{}$\6
+$\\{lampthresh}\K\\{lamp}*\\{thresh};{}$\6
+${}\\{lowest\_outlier}\K\\{lo\_r\_bound}\K\\{hi\_r\_bound}\K\\{lamp};{}$\6
+${}\\{highest\_outlier}\K\T{2}*\\{lamq};{}$\6
+${}\\{gapcount}[\T{1}]\K\T{1};{}$\6
+${}\\{prevu}\K\T{2}{}$;\par
+\fi
+
+\N{1}{48}The residue-based tests.
+OK, we're ready to tackle the main loop of the calculation.
+I should really say ``main loops'' (plural), because we use
+two search lists in this process.
+
+If a unique solution to $u=u'+u''$ is found, \PB{\\{anchorx}} will be
+the node corresponding to $u'$.
+
+\Y\B\4\X48:Decide the question via outlier testing\X${}\E{}$\6
+\X49:Try to decide by anchoring in \PB{\\{lo\_out}}\X;\6
+\X50:Try to decide by anchoring in \PB{\\{hi\_out}}\X;\6
+\&{if} (\\{hits})\5
+${}\{{}$\1\6
+\&{if} ${}(\\{nmem}[\\{anchorx}].\|r>\\{lamp}/\T{3}\W(\\{vbose}\AND\\{show%
+\_inlier\_anchors})){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ (inlier\ anchor\ U"}\|O\.{"lld="}\|O%
+\.{"lld+"}\|O\.{"lld)\\n"},\39\|n,\39\\{nmem}[\\{anchorx}].\|u,\39\|u-\\{nmem}[%
+\\{anchorx}].\|u);{}$\2\6
+\&{goto} \\{ulam\_yes};\6
+\4${}\}{}$\2\par
+\U32.\fi
+
+\M{49}If $u=u'+u''$ and $r=r'+r''$, we can assume that
+$r'\le r''$, hence $r'\le r/2$. Furthermore if $r'=r''$ we can assume that
+$u'<u''$, hence $u'<u/2$.
+These facts limit the search, and keep us from finding the same solution twice.
+
+\Y\B\4\X49:Try to decide by anchoring in \PB{\\{lo\_out}}\X${}\E{}$\6
+$\\{rbound}\K\|r\GG\T{1},\39\\{ubound}\K(\|u-\T{1})\GG\T{1};{}$\6
+\&{for} ${}(\|o,\39\|x\K\\{nmem}[\\{lo\_out}].\\{next},\39\\{count}\K\T{1};{}$
+; \|o${},\39\|x\K\\{nmem}[\|x].\\{next},\39\\{count}\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|x\Z\\{danger}){}$\1\5
+\&{break};\2\6
+${}\\{oo},\39\\{rp}\K\\{nmem}[\|x].\|r,\39\\{up}\K\\{nmem}[\|x].\|u;{}$\6
+\&{if} ${}(\\{rp}\G\\{rbound}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{rp}>\\{rbound}\V(\\{rp}+\\{rp}\E\|r\W\\{up}>\\{ubound})){}$\1\5
+\&{break};\2\6
+\4${}\}{}$\2\6
+${}\|o,\39\\{up}\K\\{nmem}[\|x].\|u;{}$\6
+\&{if} ${}(\\{ulamq}(\|u-\\{up})){}$\5
+${}\{{}$\C{ we found a new solution to $u=u'+u''$ }\1\6
+\&{if} (\\{hits})\5
+${}\{{}$\1\6
+${}\\{record\_stat}({\AND}\\{lo\_out\_stats},\39\\{count},\39\|u);{}$\6
+\&{goto} \\{not\_ulam};\6
+\4${}\}{}$\2\6
+${}\\{hits}\K\T{1},\39\\{anchorx}\K\|x;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\\{record\_stat}({\AND}\\{lo\_out\_stats},\39\\{count},\39\|u);{}$\6
+\&{if} ${}(\|x\E\\{danger}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ the\ T\ thresh}\)\.{old\ is\ too\ low!%
+\\n"});{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ (r="}\|O\.{"d,u="}\|O\.{"lld,lo\_r\_bound="}%
+\|O\.{"d)\\n"},\39\|r,\39\|u,\39\\{lo\_r\_bound});{}$\6
+\&{goto} \\{finish\_up};\6
+\4${}\}{}$\2\par
+\U48.\fi
+
+\M{50}Similar observations apply when we're solving
+$u=u'+u''$, $\bar r=\bar r'+\bar r''$.
+
+\Y\B\4\X50:Try to decide by anchoring in \PB{\\{hi\_out}}\X${}\E{}$\6
+$\\{rbarbound}\K\\{bar}(\|r)\GG\T{1};{}$\6
+\&{for} ${}(\|o,\39\|x\K\\{nmem}[\\{hi\_out}].\\{next},\39\\{count}\K\T{1};{}$
+; \|o${},\39\|x\K\\{nmem}[\|x].\\{next},\39\\{count}\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|x\Z\\{danger}){}$\1\5
+\&{break};\2\6
+${}\\{oo},\39\\{rp}\K\\{nmem}[\|x].\|r,\39\\{up}\K\\{nmem}[\|x].\|u;{}$\6
+\&{if} ${}(\\{rp}\G\\{rbarbound}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{rp}>\\{rbarbound}\V(\\{rp}+\\{rp}\E\\{bar}(\|r)\W\\{up}>%
+\\{ubound})){}$\1\5
+\&{break};\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{ulamq}(\|u-\\{up})){}$\5
+${}\{{}$\C{ we found a new solution to $u=u'+u''$ }\1\6
+\&{if} (\\{hits})\5
+${}\{{}$\1\6
+${}\\{record\_stat}({\AND}\\{hi\_out\_stats},\39\\{count},\39\|u);{}$\6
+\&{goto} \\{not\_ulam};\6
+\4${}\}{}$\2\6
+${}\\{hits}\K\T{1},\39\\{anchorx}\K\|x;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\\{record\_stat}({\AND}\\{hi\_out\_stats},\39\\{count},\39\|u);{}$\6
+\&{if} ${}(\|x\E\\{danger}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ the\ T\ thresh}\)\.{old\ is\ too\ low!%
+\\n"});{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ (rbar="}\|O\.{"d,u="}\|O\.{"lld,hi\_r%
+\_bound="}\|O\.{"d)\\n"},\39\\{bar}(\|r),\39\|u,\39\\{hi\_r\_bound});{}$\6
+\&{goto} \\{finish\_up};\6
+\4${}\}{}$\2\par
+\U48.\fi
+
+\N{1}{51}Finishing up.
+When we're done, we publish the requested subsets of everything that we've
+learned.
+
+\Y\B\4\X51:Print farewell messages\X${}\E{}$\6
+\&{if} ${}(\|n\E\\{maxn}\W\R(\\{spacing}\W(\|n\mod\\{spacing}\E\T{0}))){}$\1\5
+${}\\{printf}(\.{"U"}\|O\.{"lld="}\|O\.{"lld\\n"},\39\|n,\39\|u-\T{1}){}$;\C{
+that statement prints the final answer, if not already printed }\2\6
+\&{if} ${}(\|n<\\{maxn}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"I\ found\ "}\|O\.{"lld\ Ulam\ numbers\ an}\)%
+\.{d"},\39\|n);{}$\2\6
+\&{else}\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"I\ found"});{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{"lld\ Ulam\ misses\ <\ "}\|O\.{"lld.%
+\\n"},\39\\{misses},\39\|u);{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_gap\_stats}){}$\1\5
+\X52:Print the gap statistics\X;\2\6
+\&{if} ${}(\\{vbose}\AND\\{show\_histograms}){}$\1\5
+\X53:Print the histograms\X;\2\6
+\&{if} ${}(\\{vbose}\AND\\{show\_compression\_stats}){}$\1\5
+\X54:Print the compression statistics\X;\2\6
+\&{if} ${}(\\{vbose}\AND\\{show\_usage\_stats}){}$\1\5
+\X55:Print statistics re time and space\X;\2\par
+\U4.\fi
+
+\M{52}\B\X52:Print the gap statistics\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"******\ Gap\ statisti}\)\.{cs\ thru\ U"}\|O%
+\.{"lld\ ******\\n"},\39\|n);{}$\6
+\&{for} ${}(\|j\K\T{1};{}$ ${}\|j\Z\\{maxgap};{}$ ${}\|j\PP){}$\1\6
+\&{if} (\\{gapcount}[\|j])\1\5
+${}\\{fprintf}(\\{stderr},\39\.{""}\|O\.{"5d:"}\|O\.{"14lld\\n"},\39\|j,\39%
+\\{gapcount}[\|j]);{}$\2\2\6
+\&{if} ${}(\\{gapcount}[\\{maxgap}+\T{1}]){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{">"}\|O\.{"4d:"}\|O\.{"14lld\\n"},\39%
+\\{maxgap},\39\\{gapcount}[\\{maxgap}+\T{1}]);{}$\2\6
+\4${}\}{}$\2\par
+\U51.\fi
+
+\M{53}\B\X53:Print the histograms\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"******\ Histograms\ t}\)\.{hru\ U"}\|O\.{"lld\
+******\\n"},\39\|n);{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ Hits:\\n"});{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\\{binsize};{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|i\K\T{0},\39\|u\K\T{0};{}$ ${}\|i<\\{bincolors};{}$ ${}\|i\PP){}$%
+\1\5
+${}\|u\MRL{+{\K}}\\{yes\_bin}[\|i][\|j];{}$\2\6
+\&{if} (\|u)\1\5
+${}\\{fprintf}(\\{stderr},\39\.{""}\|O\.{"4d/"}\|O\.{"d:"}\|O\.{"14lld\\n"},\39%
+\|j,\39\\{binsize},\39\|u);{}$\2\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ Misses:\\n"});{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\\{binsize};{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|i\K\T{0},\39\|u\K\T{0};{}$ ${}\|i<\\{bincolors};{}$ ${}\|i\PP){}$%
+\1\5
+${}\|u\MRL{+{\K}}\\{miss\_bin}[\|i][\|j];{}$\2\6
+\&{if} (\|u)\1\5
+${}\\{fprintf}(\\{stderr},\39\.{""}\|O\.{"4d/"}\|O\.{"d:"}\|O\.{"14lld\\n"},\39%
+\|j,\39\\{binsize},\39\|u);{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U51.\fi
+
+\M{54}\B\X54:Print the compression statistics\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"******\ Compression\ }\)\.{summary:\ ******%
+\\n"});{}$\6
+\&{for} ${}(\|j\K(\\{code\_use}[\T{0}]\?\T{0}:\T{1});{}$ ${}\|j<\\{code%
+\_ptr};{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{"02x\ "},\39\|j);{}$\6
+\&{for} ${}(\|k\K\T{1}\LL(\\{bits\_per\_compressed\_byte}-\T{1});{}$ \|k; ${}%
+\|k\MRL{{\GG}{\K}}\T{1}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{""}\|O\.{"d"},\39\\{code}[\|j]\AND\|k\?\T{1}:%
+\T{0});{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{""}\|O\.{"14lld"}\|O\.{"14lld\\n"},\39\\{code%
+\_use}[\|j],\39\\{code\_example}[\|j]);{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U51.\fi
+
+\M{55}\B\D$\\{dump\_stats}(\\{st})$ \5
+$\\{fprintf}(\\{stderr},\39\.{"n\ "}\|O\.{"lld,\ mean\ "}\|O\.{"g,\ max\ "}\|O%
+\.{"d\ ("}\|O\.{"lld)\\n"},\39\\{st}.\|n,\39\\{st}.\\{mean},\39\\{st}.\\{max},%
+\39\\{st}.\\{ex}){}$;\par
+\Y\B\4\X55:Print statistics re time and space\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"\\nBrute-force\ loop\ }\)\.{stats:\ "});{}$\6
+\\{dump\_stats}(\\{window\_stats});\6
+${}\\{fprintf}(\\{stderr},\39\.{"Low-outlier\ inserti}\)\.{on\ stats:\ "});{}$\6
+\\{dump\_stats}(\\{ins\_stats}[\\{lo\_out}]);\6
+${}\\{fprintf}(\\{stderr},\39\.{"Low-outlier\ loop\ st}\)\.{ats:\ "});{}$\6
+\\{dump\_stats}(\\{lo\_out\_stats});\6
+${}\\{fprintf}(\\{stderr},\39\.{"High-outlier\ insert}\)\.{ion\ stats:\ "});{}$%
+\6
+\\{dump\_stats}(\\{ins\_stats}[\\{hi\_out}]);\6
+${}\\{fprintf}(\\{stderr},\39\.{"High-outlier\ loop\ s}\)\.{tats:\ "});{}$\6
+\\{dump\_stats}(\\{hi\_out\_stats});\6
+${}\\{fprintf}(\\{stderr},\39\.{"The\ outlier\ lists\ u}\)\.{sed\ "}\|O\.{"d\
+cells.\\n"},\39\\{node\_ptr}-\T{2});{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"Altogether\ "}\|O\.{"lld\ bytes,\ "}\|O\.{"lld%
+\ mems,\ "}\|O\.{".2f\ sec.\\n"},\39\\{bytes},\39\\{mems},\39{}$(\&{double}) %
+\\{clock}(\,)${}/{}$(\&{double}) \.{CLOCKS\_PER\_SEC});\6
+\4${}\}{}$\2\par
+\U51.\fi
+
+\N{1}{56}The \MP\ output.
+Pretty pictures, comin' right up.
+
+\Y\B\4\X56:Output the \MP\ file\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{mp\_file},\39\.{""}\|O\.{""}\|O\.{"\ created\ by\ gibbs-u}\)%
+\.{lam\ "}\|O\.{"lld\\n"},\39\\{maxn});{}$\6
+\X58:Output the boilerplate\X;\6
+${}\\{factor}\K(\&{double})(\\{binsize}*\\{binsize})/{}$((\&{double}) \T{9}${}*%
+\\{maxn});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"\\nbeginfig(1)\ init;}\)\.{\ "}\|O\.{""}\|O%
+\.{"\ distribution\ of\ Ul}\)\.{am\ numbers\\n"});{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\\{binsize};{}$ ${}\|j\PP){}$\1\5
+${}\\{acc}[\|j]\K\T{0},\39\\{prev}[\|j]\K\T{0};{}$\2\6
+\&{for} ${}(\|i\K\\{bincolors}-\T{1};{}$ ${}\|i\G\T{0};{}$ ${}\|i\MM){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"doit("}\|O\.{"d)\\n\ \ "},\39\|i);{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\\{binsize};{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+${}\\{acc}[\|j]\MRL{+{\K}}\\{yes\_bin}[\|i][\|j];{}$\6
+${}\|t\K(\&{int})(\\{factor}*\\{acc}[\|j]+\T{0.5});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{""}\|O\.{"d"}\|O\.{"s"},\39\|t-\\{prev}[\|j],%
+\3{-1}\39\|j+\T{1}\E\\{binsize}\?\.{";\\n"}:(\|j\AND\T{\^f})\E\T{\^f}\?\.{",\\n%
+\ \ "}:\.{","});{}$\6
+${}\\{prev}[\|j]\K\|t;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"endfig;\\n\\n"});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"beginfig(0)\ init;\ "}\|O\.{""}\|O\.{"\
+distribution\ of\ Ul}\)\.{am\ misses\\n"});{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\\{binsize};{}$ ${}\|j\PP){}$\1\5
+${}\\{acc}[\|j]\K\T{0},\39\\{prev}[\|j]\K\T{0};{}$\2\6
+\&{for} ${}(\|i\K\\{bincolors}-\T{1};{}$ ${}\|i\G\T{0};{}$ ${}\|i\MM){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"doit("}\|O\.{"d)\\n\ \ "},\39\|i);{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\\{binsize};{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+${}\\{acc}[\|j]\MRL{+{\K}}\\{miss\_bin}[\|i][\|j];{}$\6
+${}\|t\K(\&{int})(\\{factor}*\\{acc}[\|j]+\T{0.5});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{""}\|O\.{"d"}\|O\.{"s"},\39\|t-\\{prev}[\|j],%
+\3{-1}\39\|j+\T{1}\E\\{binsize}\?\.{";\\n"}:(\|j\AND\T{\^f})\E\T{\^f}\?\.{",\\n%
+\ \ "}:\.{","});{}$\6
+${}\\{prev}[\|j]\K\|t;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"endfig;\\n\\nbye.\\n"});{}$\6
+\\{fclose}(\\{mp\_file});\6
+${}\\{fprintf}(\\{stderr},\39\.{"METAPOST\ code\ writt}\)\.{en\ to\ file\ "}\|O%
+\.{"s.\\n"},\39\\{mp\_name});{}$\6
+\4${}\}{}$\2\par
+\U4.\fi
+
+\M{57}\B\X6:Global variables\X${}\mathrel+\E{}$\6
+\&{ullng} \\{acc}[\\{binsize}];\C{ accumulated histogram data }\6
+\&{int} \\{prev}[\\{binsize}];\C{ previously output and rounded histogram data
+}\6
+\&{double} \\{factor};\C{ scale factor for histogram data in the \MP\ output }%
+\par
+\fi
+
+\M{58}\B\X58:Output the boilerplate\X${}\E{}$\6
+$\\{fprintf}(\\{mp\_file},\39\.{"newinternal\ n;\ nume}\)\.{ric\ a[];\\n%
+\\n"});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"def\ init\ =\\n\ \ draw\ }\)\.{(1,0)--("}\|O%
+\.{"d,0);\\n"},\39\\{binsize});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"\ \ for\ j=1\ upto\ "}\|O\.{"d:\ a[j]:=0;\
+endfor\\}\)\.{n"},\39\\{binsize});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"\ \ pickup\ pencircle;}\)\.{\\nenddef;\\n%
+\\n"});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"def\ doit(text\ j)\ te}\)\.{xt\ l\ =%
+\\n"});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"\ \ drawoptions(withc}\)\.{olor\ j/"}\|O%
+\.{"d[green,red]);\\n"},\39\\{bincolors});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"\ \ n:=1;\\n"});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"\ \ for\ t=l:\\n"});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"\ \ \ if\ t>0:\ draw\ (n,}\)%
+\.{a[n])--(n,a[n]+t);\ a}\)\.{[n]:=a[n]+t;\ fi\\n"});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"\ \ \ n:=n+1;\\n"});{}$\6
+${}\\{fprintf}(\\{mp\_file},\39\.{"\ \ endfor\\nenddef;\\n}\)\.{"}){}$;\par
+\U56.\fi
+
+\N{1}{59}Index.
+\fi
+
+\inx
+\fin
+\con

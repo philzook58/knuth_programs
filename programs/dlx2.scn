@@ -1,0 +1,46 @@
+\I\X15:Check for duplicate item name\X
+\U14.
+\I\X13:Check item \PB{\|p}\X
+\U12.
+\I\X5:Close the files\X
+\U2.
+\I\X28:Cover all other items of \PB{\\{cur\_node}}\X
+\U23.
+\I\X18:Create a node for the item named in \PB{\\{buf}[\|p]}\X
+\U17.
+\I\X25:Do special things if enough \PB{\\{mems}} have accumulated\X
+\U23.
+\I\X3, 8, 24:Global variables\X
+\U2.
+\I\X16:Initialize \PB{\\{last\_itm}} to a new item with an empty list\X
+\U14.
+\I\X14:Input the item names\X
+\U2.
+\I\X17:Input the options\X
+\U2.
+\I\X19:Insert node \PB{\\{last\_node}} into the list for item \PB{\|k}\X
+\U18.
+\I\X37:Print the profile\X
+\U2.
+\I\X4:Process the command line\X
+\U2.
+\I\X34:Record solution and \PB{\&{goto} \\{recover}}\X
+\U33.
+\I\X20:Remove \PB{\\{last\_node}} from its item list\X
+\U17.
+\I\X22:Report the item totals\X
+\U2.
+\I\X21:Report the successful completion of the input phase\X
+\U2.
+\I\X32:Set \PB{\\{best\_itm}} to the best item for branching\X
+\U23.
+\I\X23:Solve the problem\X
+\U2.
+\I\X10, 11, 12, 26, 27, 30, 31, 35, 36:Subroutines\X
+\U2.
+\I\X6, 7:Type definitions\X
+\U2.
+\I\X29:Uncover all other items of \PB{\\{cur\_node}}\X
+\U23.
+\I\X33:Visit a solution and \PB{\&{goto} \\{recover}}\X
+\U23.

@@ -1,0 +1,8 @@
+\catcode `\@=11\relax 
+\ZZ {Intro}{1}{1}{1}{Intro}
+\ZZ {The strategy}{1}{4}{3}{The strategy}
+\ZZ {Backtracking}{1}{12}{6}{Backtracking}
+\ZZ {The twenty questions}{1}{18}{9}{The twenty questions}
+\ZZ {Index}{1}{56}{19}{Index}
+
+\catcode `\@=12\relax 

@@ -1,0 +1,281 @@
+\input cwebmac
+
+\N{1}{1}Intro. Here's an easy way to calculate the number of graceful labelings
+that
+have $m$ edges and $n$ nonisolated vertices, for $0\le n\le m+1$,
+given~$m>1$. I subdivide into connected and nonconnected graphs.
+
+The idea is to run through all $m$-tuples $(x_1,\ldots,x_m)$ with
+$0\le x_j\le m-j$; edge $j$ will go from the vertex labeled $x_j$
+to the vertex labeled $x_j+j$.
+
+I consider only the labelings in which $x_{m-1}=1$; in other words,
+I assume that edge $m-1$ runs from 1~to~$m$.
+(These are in one-to-one correspondence with the labelings for which that
+edge runs from 0~to~$m{-}1$.) But I multiply all the answers by~2;
+hence the total over all $n$ is exactly~$m!$.
+
+I could go through those $m$-tuples in some sort of Gray code order,
+with only one $x_j$ changing at a time. But I'm not trying to
+be tricky or extremely efficient. So I simply use reverse colexicographic
+order.
+That is, for each choice of $(x_{j+1},\ldots,x_m)$, I run through the
+possibilities for~$x_j$ from $m-j$ to~0, in decreasing order.
+
+\Y\B\4\D$\\{maxm}$ \5
+\T{20}\C{ this is plenty big, because $20!$ is a 61-bit number }\par
+\fi
+
+\M{2}I do, however, want to have some fun with data structures.
+
+Every vertex is represented by its label. Vertex~$v$, for $0\le v\le m$,
+is isolated if and only if label~$v$ has not been used in any of
+the edges. (In particular, vertices 0, 1, and~$m$ are never isolated,
+because of the assumption above.)
+
+It's easy to maintain, for each vertex, a linked list of all
+its neighbors.
+These lists are stacks, since they change in first-in-last-out fashion.
+
+It's also easy to maintain a dynamic union-find structure, because
+of the first-in-last-out behavior of this algorithm.
+
+\fi
+
+\M{3}OK, let's get going.
+
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\&{int} \\{mm};\C{ command-line parameter }\7
+\X15:Global variables\X;\7
+\\{main}(\&{int} \\{argc}${},\39{}$\&{char} ${}{*}\\{argv}[\,]){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \|j${},{}$ \|k${},{}$ \|l${},{}$ \|m;\7
+\X4:Process the command line\X;\6
+\X7:Initialize to $(m-1,\ldots,2,1,0)$\X;\6
+\&{while} (\T{1})\5
+${}\{{}$\1\6
+\X16:Study the current graph\X;\6
+\X5:Move to the next $m$-tuple, or \PB{\&{goto} \\{done}}\X;\6
+\4${}\}{}$\2\6
+\4\\{done}:\5
+\X17:Print the stats\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{4}\B\X4:Process the command line\X${}\E{}$\6
+\&{if} ${}(\\{argc}\I\T{2}\V\\{sscanf}(\\{argv}[\T{1}],\39\.{"\%d"},\39{\AND}%
+\\{mm})\I\T{1}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Usage:\ \%s\ m\\n"},\39\\{argv}[\T{0}]);{}$\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\6
+${}\|m\K\\{mm};{}$\6
+\&{if} ${}(\|m<\T{2}\V\|m>\\{maxm}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ m\ must\ be\ be}\)\.{tween\ 2\ and\ %
+\%d!\\n"},\39\\{maxm});{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\par
+\U3.\fi
+
+\M{5}\B\X5:Move to the next $m$-tuple, or \PB{\&{goto} \\{done}}\X${}\E{}$\6
+\&{for} ${}(\|j\K\T{1};{}$ ${}\|x[\|j]\E\T{0};{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+\X9:Delete the edge from $x[j]$ to $x[j]+j$\X;\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|j\E\|m-\T{1}){}$\1\5
+\&{goto} \\{done};\2\6
+\X9:Delete the edge from $x[j]$ to $x[j]+j$\X;\6
+${}\|x[\|j]\MM;{}$\6
+\X8:Insert an edge from $x[j]$ to $x[j]+j$\X;\6
+\&{for} ${}(\|j\MM;{}$ \|j; ${}\|j\MM){}$\5
+${}\{{}$\1\6
+${}\|x[\|j]\K\|m-\|j;{}$\6
+\X8:Insert an edge from $x[j]$ to $x[j]+j$\X;\6
+\4${}\}{}$\2\par
+\U3.\fi
+
+\N{1}{6}Graceful structures.
+An unusual --- indeed, somewhat amazing --- data structure works well
+with graceful graphs.
+
+Suppose $v$ has neighbors $w_1$, \dots, $w_t$. Let $f_v(w)=w-v$,
+if $w>v$; $f_v(w)=m+v-w$, if $w<v$. Then we set
+$\PB{\\{arcs}}[v]=f(w_1)$, or~0 if $t=0$;
+$\PB{\\{link}}[f(w_j)]=f(w_{j+1})$ for $1\le j<t$; and
+$\PB{\\{link}}[f(w_t)]=0$.
+
+\vskip1pt
+(Think about it. If $0<k\le m$, we use \PB{\\{link}[\|k]} only for an arc from
+$v$ to $v+k$ for some~$v$. If $m<k\le2m$, we use \PB{\\{link}[\|k]} only for
+an arc from $v$ to $v-(k-m)$ for some $v$. In either case at most one
+such arc is present. Thus all of the memory for link storage is
+preallocated; we don't need a list of available slots.)
+
+\fi
+
+\M{7}We silently use the facts that \PB{\\{arcs}[\|v]} is initially~0 for all~%
+\PB{\|v},
+and \PB{$\\{active}\K\T{0}$}. But the \PB{\|x} and \PB{\\{link}} arrays needn't
+be initialized
+(I mean, everything would work fine if they were initially garbage).
+
+\Y\B\4\X7:Initialize to $(m-1,\ldots,2,1,0)$\X${}\E{}$\6
+\X11:Initialize the union/find structures\X;\6
+\&{for} ${}(\|j\K\|m;{}$ \|j; ${}\|j\MM){}$\5
+${}\{{}$\1\6
+${}\|x[\|j]\K\|m-\|j;{}$\6
+\X8:Insert an edge from $x[j]$ to $x[j]+j$\X;\6
+\4${}\}{}$\2\par
+\U3.\fi
+
+\M{8}\B\X8:Insert an edge from $x[j]$ to $x[j]+j$\X${}\E{}$\6
+${}\{{}$\1\6
+\&{register} \&{int} \|p${},{}$ \|u${},{}$ \|v${},{}$ \\{uu}${},{}$ \\{vv};\7
+${}\|u\K\|x[\|j];{}$\6
+${}\|v\K\|u+\|j;{}$\6
+\X12:Do a union operation $u\equiv v$\X;\6
+${}\|p\K\\{arcs}[\|u];{}$\6
+\&{if} ${}(\R\|p){}$\1\5
+${}\\{active}\PP;{}$\2\6
+${}\\{link}[\|j]\K\|p,\39\\{arcs}[\|u]\K\|j;{}$\6
+${}\|p\K\\{arcs}[\|v];{}$\6
+\&{if} ${}(\R\|p){}$\1\5
+${}\\{active}\PP;{}$\2\6
+${}\\{link}[\|m+\|j]\K\|p,\39\\{arcs}[\|v]\K\|m+\|j;{}$\6
+\4${}\}{}$\2\par
+\Us5\ET7.\fi
+
+\M{9}\B\X9:Delete the edge from $x[j]$ to $x[j]+j$\X${}\E{}$\6
+${}\{{}$\1\6
+\&{register} \&{int} \|p${},{}$ \|u${},{}$ \|v${},{}$ \\{uu}${},{}$ \\{vv};\7
+${}\|u\K\|x[\|j];{}$\6
+${}\|v\K\|u+\|j;{}$\6
+${}\|p\K\\{link}[\|m+\|j]{}$;\C{ at this point \PB{$\\{arcs}[\|v]\K\|m+\|j$} }\6
+${}\\{arcs}[\|v]\K\|p;{}$\6
+\&{if} ${}(\R\|p){}$\1\5
+${}\\{active}\MM;{}$\2\6
+${}\|p\K\\{link}[\|j]{}$;\C{ at this point \PB{$\\{arcs}[\|u]\K\|j$} }\6
+${}\\{arcs}[\|u]\K\|p;{}$\6
+\&{if} ${}(\R\|p){}$\1\5
+${}\\{active}\MM;{}$\2\6
+\X14:Undo the union operation $u\equiv v$\X;\6
+\4${}\}{}$\2\par
+\U5.\fi
+
+\M{10}Two vertices are equivalent if they belong to the same component.
+We use a classic union-find data structure to keep of equivalences:
+The invariant relations state that
+\PB{$\\{parent}[\|v]<\T{0}$} and \PB{$\\{size}[\|v]\K\|c$} if \PB{\|v} is the
+root of an
+equivalence class of size~\PB{\|c}; otherwise \PB{\\{parent}[\|v]} points to
+an equivalent vertex that is nearer the root. These trees have
+at most $\lg m$ levels, because we never merge a tree of size~\PB{\|c}
+into a tree of size \PB{$<$ \|c}.
+
+Variable \PB{\|l} is the current number of edges. It is also, therefore, the
+number
+of union operations previously done but not yet undone.
+
+\fi
+
+\M{11}\B\X11:Initialize the union/find structures\X${}\E{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j\Z\|m;{}$ ${}\|j\PP){}$\1\5
+${}\\{parent}[\|j]\K{-}\T{1},\39\\{size}[\|j]\K\T{1}{}$;\C{ and \PB{$\|l\K%
+\T{0}$} }\2\6
+${}\|l\K\T{0}{}$;\par
+\U7.\fi
+
+\M{12}\B\X12:Do a union operation $u\equiv v$\X${}\E{}$\6
+\&{for} ${}(\\{uu}\K\|u;{}$ ${}\\{parent}[\\{uu}]\G\T{0};{}$ ${}\\{uu}\K%
+\\{parent}[\\{uu}]){}$\1\5
+;\2\6
+\&{for} ${}(\\{vv}\K\|v;{}$ ${}\\{parent}[\\{vv}]\G\T{0};{}$ ${}\\{vv}\K%
+\\{parent}[\\{vv}]){}$\1\5
+;\2\6
+\&{if} ${}(\\{uu}\E\\{vv}){}$\1\5
+${}\\{move}[\|l]\K{-}\T{1};{}$\2\6
+\&{else} \&{if} ${}(\\{size}[\\{uu}]\Z\\{size}[\\{vv}]){}$\1\5
+${}\\{parent}[\\{uu}]\K\\{vv},\39\\{move}[\|l]\K\\{uu},\39\\{size}[\\{vv}]%
+\MRL{+{\K}}\\{size}[\\{uu}];{}$\2\6
+\&{else}\1\5
+${}\\{parent}[\\{vv}]\K\\{uu},\39\\{move}[\|l]\K\\{vv},\39\\{size}[\\{uu}]%
+\MRL{+{\K}}\\{size}[\\{vv}];{}$\2\6
+${}\|l\PP{}$;\par
+\U8.\fi
+
+\M{13}Dynamic union-find is ridiculously easy because, as observed above,
+the operations are strictly last-in-first-out.
+And we didn't clobber the \PB{\\{size}} information when merging two classes.
+
+\fi
+
+\M{14}\B\X14:Undo the union operation $u\equiv v$\X${}\E{}$\6
+$\|l\MM;{}$\6
+${}\\{uu}\K\\{move}[\|l];{}$\6
+\&{if} ${}(\\{uu}\G\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{vv}\K\\{parent}[\\{uu}]{}$;\C{ we have \PB{$\\{parent}[\\{vv}]<\T{0}$} }\6
+${}\\{size}[\\{vv}]\MRL{-{\K}}\\{size}[\\{uu}];{}$\6
+${}\\{parent}[\\{uu}]\K{-}\T{1};{}$\6
+\4${}\}{}$\2\par
+\U9.\fi
+
+\M{15}\B\X15:Global variables\X${}\E{}$\6
+\&{int} \\{active};\C{ this many vertices are currently labeled (not isolated)
+}\6
+\&{int} ${}\\{parent}[\\{maxm}+\T{1}],{}$ ${}\\{size}[\\{maxm}+\T{1}],{}$ %
+\\{move}[\\{maxm}];\C{ the union-find structures }\6
+\&{int} ${}\\{arcs}[\\{maxm}+\T{1}]{}$;\C{ the first neighbor of \PB{\|v} }\6
+\&{int} ${}\\{link}[\T{2}*\\{maxm}+\T{1}]{}$;\C{ the next element in a list of
+neighbors }\6
+\&{int} ${}\|x[\\{maxm}+\T{1}]{}$;\C{ the governing sequence of edge choices }%
+\par
+\A18.
+\U3.\fi
+
+\N{1}{16}Doing it.
+Now we're ready to harvest the routines we've built up.
+
+[A puzzle for the reader: Is \PB{\\{parent}[\|m]} always negative at this
+point?
+Answer: Not if, say, $m=7$ and $(x_1,\ldots,x_m)=(5,4,3,2,0,1,0)$.]
+
+\Y\B\4\X16:Study the current graph\X${}\E{}$\6
+\&{for} ${}(\|k\K\\{parent}[\|m];{}$ ${}\\{parent}[\|k]\G\T{0};{}$ ${}\|k\K%
+\\{parent}[\|k]){}$\1\5
+;\2\6
+\&{if} ${}(\\{size}[\|k]\E\\{active}){}$\1\5
+${}\\{connected}[\\{active}]\PP;{}$\2\6
+\&{else}\1\5
+${}\\{disconnected}[\\{active}]\PP{}$;\2\par
+\U3.\fi
+
+\M{17}\B\X17:Print the stats\X${}\E{}$\6
+$\\{printf}(\.{"Counts\ for\ \%d\ edges}\)\.{:\\n"},\39\|m);{}$\6
+\&{for} ${}(\|k\K\T{2};{}$ ${}\|k\Z\|m+\T{1};{}$ ${}\|k\PP){}$\1\6
+\&{if} ${}(\\{connected}[\|k]+\\{disconnected}[\|k]){}$\5
+${}\{{}$\1\6
+${}\\{printf}(\.{"on\ \%5d\ vertices,\ \%l}\)\.{ld\ are\ connected,\ \%l}\)%
+\.{ld\ not\\n"},\39\|k,\39\T{2}*\\{connected}[\|k],\39\T{2}*\\{disconnected}[%
+\|k]);{}$\6
+${}\\{totconnected}\MRL{+{\K}}\T{2}*\\{connected}[\|k],\39\\{totdisconnected}%
+\MRL{+{\K}}\T{2}*\\{disconnected}[\|k];{}$\6
+\4${}\}{}$\2\2\6
+${}\\{printf}(\.{"Altogether\ \%lld\ con}\)\.{nected\ and\ \%lld\ not.}\)\.{%
+\\n"},\39\\{totconnected},\39\\{totdisconnected}){}$;\par
+\U3.\fi
+
+\M{18}\B\X15:Global variables\X${}\mathrel+\E{}$\6
+\&{unsigned} \&{long} \&{long} ${}\\{connected}[\\{maxm}+\T{2}],{}$ ${}%
+\\{disconnected}[\\{maxm}+\T{2}];{}$\6
+\&{unsigned} \&{long} \&{long} \\{totconnected}${},{}$ \\{totdisconnected};\par
+\fi
+
+\N{1}{19}Index.
+\fi
+
+\inx
+\fin
+\con

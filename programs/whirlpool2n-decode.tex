@@ -1,0 +1,140 @@
+\input cwebmac
+\datethis
+
+\N{1}{1}Intro. This program computes the $2\times n$ whirlpool permutation that
+corresponds to a given up-up-or-down-down permutation of
+$\{1,2,\ldots,2n-1\}$, which
+appears on the command line.
+So it's essentially the
+inverse of the program {\mc WHIRLPOOL2N-ENCODE}, and its output
+is a suitable input to that program.
+
+By ``up-up-or-down-down permutation'' of length $2n-1$, I mean a
+permutation $p_1\ldots p_{2n-1}$ such that $p_{2k-1}<p_{2k}$
+if and only if $p_{2k}<p_{2k+1}$, for $1\le k<n$.
+
+(I've made no attempt to be efficient.)
+
+(But I didn't go out of my way to be inefficient.)
+
+(Apologies for doing this hurriedly.)
+
+\Y\B\4\D$\\{maxn}$ \5
+\T{100}\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\&{int} ${}\|a[\T{2}*\\{maxn}]{}$;\C{ where we build the answer }\6
+\&{int} ${}\|g[\T{2}*\\{maxn}]{}$;\C{ the given permutation }\6
+\&{int} ${}\|w[\T{2}*\\{maxn}]{}$;\C{ workspace }\6
+\&{int} ${}\\{used}[\T{2}*\\{maxn}];{}$\7
+\\{main}(\&{int} \\{argc}${},\39{}$\&{char} ${}{*}\\{argv}[\,]){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|i${},{}$ \|j${},{}$ \|k${},{}$ \|n${},{}$ \\{nn}${},{}$ %
+\|t${},{}$ \|x${},{}$ \|y${},{}$ \\{saven};\7
+\X2:Process the command line\X;\6
+\X4:Prepare to grow\X;\6
+\&{for} ${}(\|n\K\T{1};{}$ ${}\|n<\\{saven};{}$ ${}\|n\PP){}$\1\5
+\X5:Grow the solution from \PB{\|n} to \PB{$\|n+\T{1}$}\X;\2\6
+\X6:Print the answer\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}\B\X2:Process the command line\X${}\E{}$\6
+\&{if} ${}(\\{argc}\AND\T{1}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Usage:\ \%s\ a1\ a2\ ...}\)\.{\ a(2n-1)\\n"},%
+\39\\{argv}[\T{0}]);{}$\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\6
+${}\\{nn}\K\\{argc},\39\|n\K\\{saven}\K\\{nn}/\T{2};{}$\6
+\&{if} ${}(\|n>\\{maxn}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Recompile\ me:\ This\ }\)\.{program\ has\
+maxn=\%d!}\)\.{\\n"},\39\\{maxn});{}$\6
+${}\\{exit}({-}\T{99});{}$\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k<\\{nn};{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{sscanf}(\\{argv}[\|k],\39\.{"\%d"},\39{\AND}\|g[\|k])\I\T{1}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Bad\ perm\ element\ `\%}\)\.{s'!\\n"},\39%
+\\{argv}[\|k]);{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|g[\|k]\Z\T{0}\V\|g[\|k]\G\\{nn}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Perm\ element\ `\%d'\ o}\)\.{ut\ of\ range!%
+\\n"},\39\|g[\|k]);{}$\6
+${}\\{exit}({-}\T{3});{}$\6
+\4${}\}{}$\2\6
+\&{if} (\\{used}[\|g[\|k]])\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Duplicate\ perm\ entr}\)\.{y\ `\%d'!\\n"},\39%
+\|g[\|k]);{}$\6
+${}\\{exit}({-}\T{4});{}$\6
+\4${}\}{}$\2\6
+${}\\{used}[\|g[\|k]]\K\T{1};{}$\6
+\4${}\}{}$\2\6
+\X3:Verify the up-up-or-down-down criteria\X;\par
+\U1.\fi
+
+\M{3}\B\X3:Verify the up-up-or-down-down criteria\X${}\E{}$\6
+\&{for} ${}(\|k\K\T{2};{}$ ${}\|k<\\{nn};{}$ ${}\|k\MRL{+{\K}}\T{2}){}$\5
+${}\{{}$\1\6
+\&{if} ${}((\|g[\|k-\T{1}]<\|g[\|k])\I(\|g[\|k]<\|g[\|k+\T{1}])){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Not\ up-up-or-down-d}\)\.{own!\ (\%d\ \%d\ %
+\%d)\\n"},\39\|g[\|k-\T{1}],\39\|g[\|k],\39\|g[\|k+\T{1}])\hbox{)};{}$\6
+${}\\{exit}({-}\T{6});{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U2.\fi
+
+\M{4}Here I compress the ``uncompressed'' numbers in the given permutation.
+
+\Y\B\4\X4:Prepare to grow\X${}\E{}$\6
+$\|a[\T{0}]\K\T{1};{}$\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k<\\{nn};{}$ ${}\|k\PP){}$\1\5
+${}\\{used}[\|k]\K\T{0};{}$\2\6
+\&{for} ${}(\|k\K\T{2};{}$ ${}\|k<\\{nn};{}$ ${}\|k\MRL{+{\K}}\T{2}){}$\5
+${}\{{}$\1\6
+${}\|x\K\|g[\|k-\T{1}],\39\|y\K\|g[\|k];{}$\6
+\&{for} ${}(\|t\K\T{0},\39\|j\K\T{1};{}$ ${}\|j<\|x;{}$ ${}\|j\PP){}$\1\6
+\&{if} (\\{used}[\|j])\1\5
+${}\|t\PP;{}$\2\2\6
+${}\|g[\|k-\T{1}]\MRL{-{\K}}\|t;{}$\6
+\&{for} ${}(\|t\K\T{0},\39\|j\K\T{1};{}$ ${}\|j<\|y;{}$ ${}\|j\PP){}$\1\6
+\&{if} (\\{used}[\|j])\1\5
+${}\|t\PP;{}$\2\2\6
+${}\|g[\|k]\MRL{-{\K}}\|t;{}$\6
+${}\\{used}[\|x]\K\\{used}[\|y]\K\T{1};{}$\6
+\4${}\}{}$\2\6
+${}\|g[\\{nn}-\T{1}]\K\T{1}{}$;\par
+\U1.\fi
+
+\M{5}\B\X5:Grow the solution from \PB{\|n} to \PB{$\|n+\T{1}$}\X${}\E{}$\6
+${}\{{}$\1\6
+${}\|x\K\|g[\\{nn}-\|n-\|n-\T{1}],\39\|y\K\|g[\\{nn}-\|n-\|n];{}$\6
+${}\|t\K\|y-(\|x<\|y\?\T{2}:\T{1})-\|a[\T{0}]+\|n+\|n;{}$\6
+\&{for} ${}(\|k\K\|n-\T{1};{}$ ${}\|k\G\T{0};{}$ ${}\|k\MM){}$\1\5
+${}\|a[\|k+\T{1}]\K(\|a[\|k]+\|t)\MOD(\|n+\|n),\39\|a[\|k+\\{saven}+\T{1}]\K(%
+\|a[\|k+\\{saven}]+\|t)\MOD(\|n+\|n);{}$\2\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k\Z\|n;{}$ ${}\|k\PP){}$\1\5
+${}\|a[\|k]\MRL{+{\K}}(\|a[\|k]<\|x-\T{1}\?\T{1}:\T{2}),\39\|a[\|k+\\{saven}]%
+\MRL{+{\K}}(\|a[\|k+\\{saven}]<\|x-\T{1}\?\T{1}:\T{2});{}$\2\6
+${}\|a[\T{0}]\K\|x;{}$\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{6}\B\X6:Print the answer\X${}\E{}$\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\\{nn};{}$ ${}\|k\PP){}$\1\5
+${}\\{printf}(\.{"\ \%d"},\39\|a[\|k]);{}$\2\6
+\\{printf}(\.{"\\n"});\par
+\U1.\fi
+
+\N{1}{7}Index.
+\fi
+
+\inx
+\fin
+\con

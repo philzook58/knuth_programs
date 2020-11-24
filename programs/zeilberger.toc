@@ -1,0 +1,8 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {The main algorithm}{1}{4}{3}{The main algorithm}
+\ZZ {Checking the Strahler number}{1}{11}{5}{Checking the Strahler number}
+\ZZ {The inverse algorithm}{1}{14}{6}{The inverse algorithm}
+\ZZ {Index}{1}{18}{8}{Index}
+
+\catcode `\@=12\relax 

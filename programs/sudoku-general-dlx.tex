@@ -1,0 +1,330 @@
+\input cwebmac
+
+\N{1}{1}Intro. Given the specification of a generalized sudoku puzzle in \PB{%
+\\{stdin}},
+this program outputs {\mc DLX} data for the problem of finding all solutions.
+
+What is a generalized sudoku puzzle? It is a puzzle whose specification
+begins with $n$ lines of $n$ characters each, where $n$ is between 1 and 32.
+The characters on these lines are of three kinds:
+\smallskip
+\item{$\bullet$} A digit from 1 to $n$. (Those digits are \.1, \.2, \dots,
+\.9, \.a, \.b, \dots, \.w.) This means that the puzzle will contain this
+digit as a clue in this cell.
+\item{$\bullet$} The character `\.{\#}'. This means that this cell is
+a ``hole'' in the puzzle, not meant to be filled in.
+\item{$\bullet$} Any other character. This means that this cell is initially
+blank.
+\smallskip\noindent
+The specification continues with zero or more additional groups of
+$n$ lines of $n$ characters. These groups specify ``boxes'' (also called
+``regions''). The characters on these lines are of two kinds:
+\smallskip
+\item{$\bullet$} A digit from 0 to $n-1$. (Those digits are \.0, \.1, \dots,
+\.9, \.a, \.b, \dots, \.v.) This means that the cell is part of the box
+that has this name.
+\item{$\bullet$} The character `\..'. This means nothing. I mean, it
+means that nothing about boxes is being specified for this cell in this group.
+\smallskip\noindent
+Boxes can overlap, but only if they're specified in different groups.
+When the input has ended, every box that has been specified should contain
+at most $n$ cells.
+
+What is the solution to a generalized sudoku puzzle? It is a way to fill in
+all of the initially blank cells, with digits from 1 to~$n$, in such a
+way that no digit occurs more than once in any row, column, or box.
+
+Here, for example, is the letter `A' from the Puzzlium ABC,
+which was presented by Serhiy and Peter Grabarchuk at the Martin Gardner
+Centennial celebration in Berkeley on 26 October 2014:
+$$\vcenter{\halign{\tt#\hfil\cr
+\#.5..\#\cr
+.4..3.\cr
+6.\#\#..\cr
+.5.2..\cr
+.....1\cr
+.3\#\#..\cr
+.0000.\cr
+122203\cr
+12..03\cr
+122433\cr
+144443\cr
+11..43\cr
+}}$$
+It specifies five hexomino boxes. (The reader will enjoy finding its solution.)
+
+The clues are repeated in a comment line at the beginning of the output.
+
+\Y\B\4\D$\\{bufsize}$ \5
+\T{80}\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\&{char} \\{buf}[\\{bufsize}];\6
+\&{int} \\{pos}[\T{32}][\T{32}];\C{ clues and holes }\6
+\&{int} \\{row}[\T{32}][\T{32}];\C{ does this row contain this clue? }\6
+\&{int} \\{col}[\T{32}][\T{32}];\C{ does this column contain this clue? }\6
+\&{int} \\{box}[\T{32}][\T{32}];\C{ does this box contain this clue? }\6
+\&{int} \\{rowcount}[\T{32}]${},{}$ \\{colcount}[\T{32}]${},{}$ \\{boxcount}[%
+\T{32}];\C{ how many cells in this guy? }\6
+\&{int} \|c;\C{ how many clues have been given? }\6
+\&{int} \\{bc};\C{ how many boxes have been defined? }\6
+\&{int} \\{cells};\C{ how many cells are left, after holes deducted? }\6
+\&{unsigned} \&{int} \\{inbox}[\T{32}][\T{32}];\C{ which boxes contain this
+cell? }\7
+\\{main}(\,)\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|d${},{}$ \|i${},{}$ \|j${},{}$ \|k${},{}$ \\{kk}${},{}$ %
+\|n${},{}$ \|x;\7
+\X2:Input the given problem\X;\6
+\X6:Output the comment line\X;\6
+\X7:Output the item-name line\X;\6
+\X8:Output the options\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}\B\X2:Input the given problem\X${}\E{}$\6
+\&{for} ${}(\|n\K\|k\K\\{kk}\K\T{0};{}$  ; ${}\\{kk}\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\R\\{fgets}(\\{buf},\39\\{bufsize},\39\\{stdin})){}$\1\5
+\&{break};\2\6
+\X3:Make sure \PB{\\{buf}} has exactly \PB{\|n} characters\X;\6
+\&{if} ${}(\\{kk}<\|n){}$\1\5
+\X4:Input line \PB{\|k} of the overall spec\X\2\6
+\&{else}\1\5
+\X5:Input line \PB{\|k} of a box-definition group\X;\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{kk}<\|n){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"There\ were\ fewer\ th}\)\.{an\ \%d\ lines\ of%
+\ input}\)\.{!\\n"},\39\|n);{}$\6
+${}\\{exit}({-}\T{5});{}$\6
+\4${}\}{}$\2\6
+;\6
+\&{if} ${}(\|k+\T{1}<\|n){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Box-definition\ grou}\)\.{p\ \%d\ had\ fewer\
+than\ }\)\.{\%d\ lines\ of\ input!\\n}\)\.{"},\39\\{kk}/\|n,\39\|n);{}$\6
+${}\\{exit}({-}\T{6});{}$\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"OK,\ I've\ got\ n=\%d,\ }\)\.{with\ \%d\ boxes%
+\ and\ \%d}\)\.{\ clues\ in\ \%d\ cells.\\}\)\.{n"},\39\|n,\39\\{bc},\39\|c,\39%
+\\{cells}){}$;\par
+\U1.\fi
+
+\M{3}\B\X3:Make sure \PB{\\{buf}} has exactly \PB{\|n} characters\X${}\E{}$\6
+\&{if} ${}(\R\|n){}$\5
+${}\{{}$\C{ this is the first line, which has \PB{\|n} chars by definition }\1\6
+\&{for} ${}(\|n\K\T{0};{}$ ${}\\{buf}[\|n]\W\\{buf}[\|n]\I\.{'\\n'};{}$ ${}\|n%
+\PP){}$\1\5
+;\C{ advance to end of line }\2\6
+\&{if} ${}(\|n\E\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"the\ length\ of\ the\ f}\)\.{irst\ line\ (n)\
+is\ zer}\)\.{o!\\n"});{}$\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|n>\T{32}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"the\ length\ of\ the\ f}\)\.{irst\ line\ (\%d)%
+\ excee}\)\.{ds\ 32!\\n"},\39\|n);{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\6
+${}\\{cells}\K\|n*\|n;{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\5
+${}\\{rowcount}[\|j]\K\\{colcount}[\|j]\K\|n;{}$\2\6
+\4${}\}{}$\2\6
+\&{else}\5
+${}\{{}$\1\6
+${}\|k\K\\{kk}\MOD\|n;{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\6
+\&{if} ${}(\\{buf}[\|j]\E\.{'\\n'}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"input\ line\ \%d\ has\ f}\)\.{ewer\ than\ \%d\
+charact}\)\.{ers!\\n"},\39\\{kk},\39\|n);{}$\6
+${}\\{exit}({-}\T{3});{}$\6
+\4${}\}{}$\2\2\6
+\&{if} ${}(\\{buf}[\|j]\I\.{'\\n'}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"input\ line\ \%d\ has\ m}\)\.{ore\ than\ \%d\
+characte}\)\.{rs!\\n"},\39\\{kk},\39\|n);{}$\6
+${}\\{exit}({-}\T{4});{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U2.\fi
+
+\M{4}\B\D$\\{encode}(\|d)$ \5
+$((\|d)<\T{10}\?\.{'0'}+(\|d):\.{'a'}+(\|d)-\T{10}{}$)\par
+\Y\B\4\X4:Input line \PB{\|k} of the overall spec\X${}\E{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{buf}[\|j]>\.{'0'}\W\\{buf}[\|j]\Z\.{'9'}){}$\1\5
+${}\\{pos}[\|k][\|j]\K\|d\K\\{buf}[\|j]-\.{'0'};{}$\2\6
+\&{else} \&{if} ${}(\\{buf}[\|j]\G\.{'a'}\W\\{buf}[\|j]\Z\.{'w'}){}$\1\5
+${}\\{pos}[\|k][\|j]\K\|d\K\\{buf}[\|j]-\.{'a'}+\T{10};{}$\2\6
+\&{else} \&{if} ${}(\\{buf}[\|j]\E\.{'\#'}){}$\1\5
+${}\\{pos}[\|k][\|j]\K{-}\T{1},\39\\{cells}\MM,\39\\{rowcount}[\|k]\MM,\39%
+\\{colcount}[\|j]\MM;{}$\2\6
+\&{else}\1\5
+${}\\{pos}[\|k][\|j]\K\T{0}{}$;\C{ it already is zero, but let's waste time for
+clarity }\2\6
+\&{if} ${}(\\{pos}[\|k][\|j]>\T{0}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{row}[\|k][\|d-\T{1}]){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"digit\ \%c\ appears\ in}\)\.{\ columns\ \%c\
+and\ \%c\ o}\)\.{f\ row\ \%c!\\n"},\39\\{encode}(\|d),\39\\{encode}(\\{row}[%
+\|k][\|d-\T{1}]-\T{1}),\39\\{encode}(\|j),\39\\{encode}(\|k));{}$\6
+${}\\{exit}({-}\T{10});{}$\6
+\4${}\}{}$\2\6
+${}\\{row}[\|k][\|d-\T{1}]\K\|j+\T{1};{}$\6
+\&{if} ${}(\\{col}[\|j][\|d-\T{1}]){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"digit\ \%c\ appears\ in}\)\.{\ rows\ \%c\ and\
+\%c\ of\ c}\)\.{olumn\ \%c!\\n"},\39\\{encode}(\|d),\39\\{encode}(\\{col}[\|j][%
+\|d-\T{1}]-\T{1}),\39\\{encode}(\|k),\39\\{encode}(\|j));{}$\6
+${}\\{exit}({-}\T{11});{}$\6
+\4${}\}{}$\2\6
+${}\\{col}[\|j][\|d-\T{1}]\K\|k+\T{1};{}$\6
+${}\|c\PP;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U2.\fi
+
+\M{5}\B\X5:Input line \PB{\|k} of a box-definition group\X${}\E{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{buf}[\|j]\E\.{'.'}){}$\1\5
+\&{continue};\2\6
+\&{if} ${}(\\{buf}[\|j]\G\.{'0'}\W\\{buf}[\|j]\Z\.{'9'}){}$\1\5
+${}\|x\K\\{buf}[\|j]-\.{'0'};{}$\2\6
+\&{else} \&{if} ${}(\\{buf}[\|j]\G\.{'a'}\W\\{buf}[\|j]\Z\.{'v'}){}$\1\5
+${}\|x\K\\{buf}[\|j]-\.{'a'}+\T{10};{}$\2\6
+\&{else}\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"line\ \%d\ of\ box-defi}\)\.{nition\ group\ %
+\%d\ has\ }\)\.{the\ invalid\ characte}\)\.{r\ \%c!\\n"},\39\|k,\39\\{kk}/\|n,%
+\39\\{buf}[\|j]);{}$\6
+${}\\{exit}({-}\T{7});{}$\6
+\4${}\}{}$\2\6
+${}\|d\K\\{pos}[\|k][\|j];{}$\6
+\&{if} ${}(\|d>\T{0}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{box}[\|x][\|d-\T{1}]){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"digit\ \%c\ appears\ in}\)\.{\ rows\ \%c\ and\
+\%c\ of\ b}\)\.{ox\ \%c!\\n"},\39\\{encode}(\|d),\39\\{encode}(\\{box}[\|x][%
+\|d-\T{1}]-\T{1}),\39\\{encode}(\|k),\39\\{encode}(\|x));{}$\6
+${}\\{exit}({-}\T{12});{}$\6
+\4${}\}{}$\2\6
+${}\\{box}[\|x][\|d-\T{1}]\K\|k+\T{1};{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{boxcount}[\|x]\E\T{0}){}$\1\5
+${}\\{bc}\PP;{}$\2\6
+\&{if} ${}(\\{inbox}[\|k][\|j]\AND(\T{1}\LL\|x)){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"box\ \%c\ already\ cont}\)\.{ains\ the\ cell\
+in\ row}\)\.{\ \%c,\ column\ \%c!\\n"},\39\\{encode}(\|x),\39\\{encode}(\|k),%
+\39\\{encode}(\|j));{}$\6
+${}\\{exit}({-}\T{13});{}$\6
+\4${}\}{}$\2\6
+${}\\{inbox}[\|k][\|j]\MRL{{\OR}{\K}}\T{1}\LL\|x,\39\\{boxcount}[\|x]\PP;{}$\6
+\&{if} ${}(\\{boxcount}[\|x]>\|n){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"box\ \%c\ contains\ mor}\)\.{e\ than\ \%d\
+cells!\\n"},\39\\{encode}(\|x),\39\|n);{}$\6
+${}\\{exit}({-}\T{13});{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U2.\fi
+
+\M{6}\B\X6:Output the comment line\X${}\E{}$\6
+\\{printf}(\.{"|sudoku"});\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|n;{}$ ${}\|i\PP){}$\5
+${}\{{}$\1\6
+\\{printf}(\.{"!"});\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\5
+${}\\{fprintf}(\\{stdout},\39\.{"\%c"},\39\\{pos}[\|i][\|j]<\T{0}\?\.{'\#'}:%
+\\{pos}[\|i][\|j]>\T{0}\?\\{encode}(\\{pos}[\|i][\|j]):\.{'.'});{}$\2\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{stdout},\39\.{"\\n"}){}$;\par
+\U1.\fi
+
+\M{7}The \.p items precede the \.r items, which precede the \.c items,
+which precede the \.b items. An item is omitted if there already was
+a clue for it. An item is secondary if it doesn't need to appear $n$ times.
+
+\Y\B\4\X7:Output the item-name line\X${}\E{}$\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|n;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\6
+\&{if} ${}(\\{pos}[\|i][\|j]\E\T{0}){}$\1\5
+${}\\{printf}(\.{"p\%c\%c\ "},\39\\{encode}(\|i),\39\\{encode}(\|j));{}$\2\2\2\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|n;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d<\|n;{}$ ${}\|d\PP){}$\1\6
+\&{if} ${}(\\{rowcount}[\|i]\E\|n\W\R\\{row}[\|i][\|d]){}$\1\5
+${}\\{printf}(\.{"r\%c\%c\ "},\39\\{encode}(\|i),\39\\{encode}(\|d+\T{1}));{}$%
+\2\2\2\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d<\|n;{}$ ${}\|d\PP){}$\1\6
+\&{if} ${}(\\{colcount}[\|j]\E\|n\W\R\\{col}[\|j][\|d]){}$\1\5
+${}\\{printf}(\.{"c\%c\%c\ "},\39\\{encode}(\|j),\39\\{encode}(\|d+\T{1}));{}$%
+\2\2\2\6
+\&{for} ${}(\|x\K\T{0};{}$ ${}\|x<\T{32};{}$ ${}\|x\PP){}$\1\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d<\|n;{}$ ${}\|d\PP){}$\1\6
+\&{if} ${}(\\{boxcount}[\|x]\E\|n\W\R\\{box}[\|x][\|d]){}$\1\5
+${}\\{printf}(\.{"b\%c\%c\ "},\39\\{encode}(\|x),\39\\{encode}(\|d+\T{1}));{}$%
+\2\2\2\6
+\\{printf}(\.{"|"});\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|n;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d<\|n;{}$ ${}\|d\PP){}$\1\6
+\&{if} ${}(\\{rowcount}[\|i]\W\\{rowcount}[\|i]<\|n\W\R\\{row}[\|i][\|d]){}$\1\5
+${}\\{printf}(\.{"\ r\%c\%c"},\39\\{encode}(\|i),\39\\{encode}(\|d+\T{1}));{}$%
+\2\2\2\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d<\|n;{}$ ${}\|d\PP){}$\1\6
+\&{if} ${}(\\{colcount}[\|j]\W\\{colcount}[\|j]<\|n\W\R\\{col}[\|j][\|d]){}$\1\5
+${}\\{printf}(\.{"\ c\%c\%c"},\39\\{encode}(\|j),\39\\{encode}(\|d+\T{1}));{}$%
+\2\2\2\6
+\&{for} ${}(\|x\K\T{0};{}$ ${}\|x<\T{32};{}$ ${}\|x\PP){}$\1\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d<\|n;{}$ ${}\|d\PP){}$\1\6
+\&{if} ${}(\\{boxcount}[\|x]\W\\{boxcount}[\|x]<\|n\W\R\\{box}[\|x][\|d]){}$\1\5
+${}\\{printf}(\.{"\ b\%c\%c"},\39\\{encode}(\|x),\39\\{encode}(\|d+\T{1}));{}$%
+\2\2\2\6
+\\{printf}(\.{"\\n"});\par
+\U1.\fi
+
+\M{8}\B\X8:Output the options\X${}\E{}$\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|n;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d<\|n;{}$ ${}\|d\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{pos}[\|i][\|j]\I\T{0}\V\\{row}[\|i][\|d]\I\T{0}\V\\{col}[\|j][%
+\|d]\I\T{0}){}$\1\5
+\&{continue};\2\6
+\&{for} ${}(\|x\K\T{0};{}$ ${}\|x<\T{32};{}$ ${}\|x\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}((\\{inbox}[\|i][\|j]\AND(\T{1}\LL\|x))\E\T{0}){}$\1\5
+\&{continue};\2\6
+\&{if} ${}(\\{box}[\|x][\|d]\I\T{0}){}$\1\5
+\&{break};\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|x<\T{32}){}$\1\5
+\&{continue};\2\6
+${}\\{printf}(\.{"p\%c\%c\ r\%c\%c\ c\%c\%c"},\39\\{encode}(\|i),\39\\{encode}(%
+\|j),\39\\{encode}(\|i),\39\\{encode}(\|d+\T{1}),\39\\{encode}(\|j),\39%
+\\{encode}(\|d+\T{1}));{}$\6
+\&{for} ${}(\|x\K\T{0};{}$ ${}\|x<\T{32};{}$ ${}\|x\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}((\\{inbox}[\|i][\|j]\AND(\T{1}\LL\|x))\E\T{0}){}$\1\5
+\&{continue};\2\6
+${}\\{printf}(\.{"\ b\%c\%c"},\39\\{encode}(\|x),\39\\{encode}(\|d+\T{1}));{}$\6
+\4${}\}{}$\2\6
+\\{printf}(\.{"\\n"});\6
+\4${}\}{}$\2\2\2\par
+\U1.\fi
+
+\N{1}{9}Index.
+\fi
+
+\inx
+\fin
+\con

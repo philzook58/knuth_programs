@@ -1,0 +1,7 @@
+\catcode `\@=11\relax 
+\ZZ {Intro}{1}{1}{1}{Intro}
+\ZZ {Data structures}{1}{2}{2}{Data structures}
+\ZZ {The main algorithm}{1}{11}{5}{The main algorithm}
+\ZZ {Index}{1}{19}{9}{Index}
+
+\catcode `\@=12\relax 

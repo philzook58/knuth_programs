@@ -1,0 +1,9 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {The algorithm: An example}{1}{5}{4}{The algorithm: An example}
+\ZZ {The algorithm: An implementation}{1}{13}{7}{The algorithm: An implementation}
+\ZZ {Pivoting}{1}{19}{10}{Pivoting}
+\ZZ {Final touches}{1}{21}{11}{Final touches}
+\ZZ {Index}{1}{25}{12}{Index}
+
+\catcode `\@=12\relax 

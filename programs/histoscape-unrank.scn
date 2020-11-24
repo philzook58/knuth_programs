@@ -1,0 +1,21 @@
+\I\X3:Compute the \PB{\\{bad}} table\X
+\U1.
+\I\X9:Deduce cell $(i-1,j-1)$ and \PB{\&{goto} \\{loop}}\X
+\U8.
+\I\X11:Deduce cell $(i-2,n-1)$ and \PB{\&{goto} \\{loop}}\X
+\U10.
+\I\X10:Get set to handle constraint $(i,1)$\X
+\U7.
+\I\X7:Handle constraint $(i,j)$; update the partial solution and \PB{\&{goto} %
+\\{loop}}, if we're ready to do that\X
+\U1.
+\I\X6:Increase the \PB{\\{inx}} table, keeping \PB{\\{inx}[\|q]} constant\X
+\Us7\ET10.
+\I\X4:Print the solution\X
+\U1.
+\I\X2:Process the command line\X
+\U1.
+\I\X5:Set up the first partial solution\X
+\U1.
+\I\X8:Work with a known value of \PB{\|d}, possibly making a breakthrough\X
+\U7.

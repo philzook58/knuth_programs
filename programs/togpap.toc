@@ -1,0 +1,11 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {Error diffusion}{1}{12}{6}{Error diffusion}
+\ZZ {Ordered dithering}{1}{15}{7}{Ordered dithering}
+\ZZ {Dot diffusion}{1}{18}{8}{Dot diffusion}
+\ZZ {Alias-Reducing Image-Enhancing Screening}{1}{24}{10}{Alias-Reducing Image-Enhancing Screening}
+\ZZ {Encapsulated PostScript}{1}{29}{11}{Encapsulated PostScript}
+\ZZ {Synthesis}{1}{33}{12}{Synthesis}
+\ZZ {Index}{1}{35}{13}{Index}
+
+\catcode `\@=12\relax 

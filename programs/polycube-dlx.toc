@@ -1,0 +1,11 @@
+\catcode `\@=11\relax 
+\ZZ {Intro}{1}{1}{1}{Intro}
+\ZZ {Low-level operations}{1}{2}{2}{Low-level operations}
+\ZZ {Data structures}{1}{8}{4}{Data structures}
+\ZZ {Inputting the given box}{1}{15}{6}{Inputting the given box}
+\ZZ {Inputting the given pieces}{1}{21}{8}{Inputting the given pieces}
+\ZZ {Transformations}{1}{27}{11}{Transformations}
+\ZZ {Finishing up}{1}{31}{13}{Finishing up}
+\ZZ {Index}{1}{34}{14}{Index}
+
+\catcode `\@=12\relax 

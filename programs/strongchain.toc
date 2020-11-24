@@ -1,0 +1,9 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {Backtracking}{1}{2}{2}{Backtracking}
+\ZZ {Choosing the summands}{1}{7}{4}{Choosing the summands}
+\ZZ {Placing the summands}{1}{11}{5}{Placing the summands}
+\ZZ {Simple upper bounds}{1}{18}{7}{Simple upper bounds}
+\ZZ {Index}{1}{23}{8}{Index}
+
+\catcode `\@=12\relax 

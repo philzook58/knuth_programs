@@ -1,0 +1,10 @@
+\catcode `\@=11\relax 
+\ZZ {Generalized exact cover}{1}{1}{1}{Generalized exact cover}
+\ZZ {Data structures}{1}{3}{3}{Data structures}
+\ZZ {Inputting the matrix}{1}{7}{5}{Inputting the matrix}
+\ZZ {Backtracking}{1}{12}{7}{Backtracking}
+\ZZ {Color barriers}{1}{24}{11}{Color barriers}
+\ZZ {Help for debugging}{1}{28}{13}{Help for debugging}
+\ZZ {Index}{1}{29}{14}{Index}
+
+\catcode `\@=12\relax 

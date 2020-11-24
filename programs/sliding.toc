@@ -1,0 +1,10 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {Representing the board}{1}{6}{4}{Representing the board}
+\ZZ {Breadth-first search}{1}{19}{10}{Breadth-first search}
+\ZZ {The answer}{1}{39}{17}{The answer}
+\ZZ {Moving}{1}{42}{18}{Moving}
+\ZZ {Supermoving}{1}{46}{21}{Supermoving}
+\ZZ {Index}{1}{58}{27}{Index}
+
+\catcode `\@=12\relax 

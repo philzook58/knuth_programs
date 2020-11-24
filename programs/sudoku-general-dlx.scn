@@ -1,0 +1,14 @@
+\I\X5:Input line \PB{\|k} of a box-definition group\X
+\U2.
+\I\X4:Input line \PB{\|k} of the overall spec\X
+\U2.
+\I\X2:Input the given problem\X
+\U1.
+\I\X3:Make sure \PB{\\{buf}} has exactly \PB{\|n} characters\X
+\U2.
+\I\X6:Output the comment line\X
+\U1.
+\I\X7:Output the item-name line\X
+\U1.
+\I\X8:Output the options\X
+\U1.

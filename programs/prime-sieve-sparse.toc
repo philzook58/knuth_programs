@@ -1,0 +1,10 @@
+\catcode `\@=11\relax 
+\ZZ {Intro}{1}{1}{1}{Intro}
+\ZZ {Sieving}{1}{5}{5}{Sieving}
+\ZZ {Processing gaps}{1}{13}{8}{Processing gaps}
+\ZZ {Random numbers}{1}{22}{11}{Random numbers}
+\ZZ {Double precision multiplication}{1}{26}{13}{Double precision multiplication}
+\ZZ {Prime testing}{1}{27}{14}{Prime testing}
+\ZZ {Index}{1}{33}{16}{Index}
+
+\catcode `\@=12\relax 

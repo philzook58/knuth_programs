@@ -1,0 +1,16 @@
+\catcode `\@=11\relax 
+\ZZ {Intro}{1}{1}{1}{Intro}
+\ZZ {Dynamic arrays}{1}{12}{5}{Dynamic arrays}
+\ZZ {Variables and hash tables}{1}{20}{8}{Variables and hash tables}
+\ZZ {The cache}{1}{40}{17}{The cache}
+\ZZ {ZDD structure}{1}{52}{23}{ZDD structure}
+\ZZ {Binary operations}{1}{74}{32}{Binary operations}
+\ZZ {Ternary operations}{1}{97}{48}{Ternary operations}
+\ZZ {Top-level calls}{1}{105}{55}{Top-level calls}
+\ZZ {Parsing the commands}{1}{108}{57}{Parsing the commands}
+\ZZ {Reordering}{1}{128}{63}{Reordering}
+\ZZ {Triage and housekeeping}{1}{153}{73}{Triage and housekeeping}
+\ZZ {Mathematica output}{1}{157}{74}{Mathematica output}
+\ZZ {Index}{1}{162}{76}{Index}
+
+\catcode `\@=12\relax 

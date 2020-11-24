@@ -1,0 +1,8 @@
+\catcode `\@=11\relax 
+\ZZ {Intro}{1}{1}{1}{Intro}
+\ZZ {Generating the standard tableaux}{1}{6}{4}{Generating the standard tableaux}
+\ZZ {Finding admissible column perms}{1}{11}{6}{Finding admissible column perms}
+\ZZ {Finishing up}{1}{16}{8}{Finishing up}
+\ZZ {Index}{1}{20}{9}{Index}
+
+\catcode `\@=12\relax 

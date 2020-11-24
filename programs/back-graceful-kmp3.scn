@@ -1,0 +1,32 @@
+\I\X9:Backtrack through all solutions\X
+\U1.
+\I\X7:Check the labels\X
+\U5.
+\I\X8:Check the placements\X
+\U5.
+\I\X6:Check the rank\X
+\U5.
+\I\X2:Initialize the data structures\X
+\U1.
+\I\X15:Make special moves near the root\X
+\U9.
+\I\X16:Make \PB{\\{mv}}\X
+\Us9\ET22.
+\I\X22:Record all adjacent placements of \PB{\|a} and \PB{\|b}\X
+\U18.
+\I\X23:Record all double placements of \PB{\|b} adjacent to \PB{\|a}\X
+\U22.
+\I\X21:Record all legal placements of \PB{\|a} adjacent to \PB{\|b}\X
+\U18.
+\I\X19:Record all legal placements of \PB{\|b} adjacent to \PB{\|a}\X
+\U18.
+\I\X18:Record all possible $(a,b)$ moves in the array \PB{\\{move}[\|l]}\X
+\U9.
+\I\X12:Record the null move and \PB{\&{goto} \\{ready}}\X
+\U9.
+\I\X10:Report a solution and \PB{\&{goto} \\{backup}}\X
+\U9.
+\I\X3, 4, 5, 11, 13, 14, 20:Subroutines\X
+\U1.
+\I\X17:Unmake \PB{\\{mv}}\X
+\Us9\ET22.

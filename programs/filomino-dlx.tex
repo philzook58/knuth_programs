@@ -1,0 +1,435 @@
+\input cwebmac
+\datethis
+
+\N{1}{1}Intro. Given the specification of a filomino puzzle in \PB{\\{stdin}},
+this program outputs {\mc DLX} data for the problem of finding
+all solutions.
+
+The specification consists of $m$ lines of $n$ entries each.
+An entry is either `\..' or a digit from \.1 to~\.9 or \.a to~\.f.
+
+A solution means that all `\..' entries are replaced by digits.
+Every maximal rookwise connected set of cells labeled $d$ must
+be a $d$-omino.
+
+The maximum digit in the solution will be the maximum digit
+specified. (For example, the program will make no attempt to
+fit pentominoes into the blank cells, if all of the specified
+digits are less than~\.5.)
+
+The main interest in this program is its method for finding all
+feasible $d$-ominoes that cover a given entry~$d$: They must not
+be adjacent to a $d$ that's not included.
+The algorithm used here is an instructive generalization of
+Algorithm~R in exercise 7.2.2--75 of {\sl The Art of Computer
+Programming}.
+
+\Y\B\4\D$\\{maxn}$ \5
+\T{16}\C{ at most 16 (or I'll have to go beyond hex) }\par
+\B\4\D$\\{maxd}$ \5
+\T{16}\C{ digits of the solution must be less than this }\par
+\B\4\D$\\{bufsize}$ \5
+\T{80}\par
+\B\4\D$\\{pack}(\|i,\|j)$ \5
+$((((\|i)+\T{1})\LL\T{8})+(\|j)+\T{1}{}$)\par
+\B\4\D$\\{unpack}(\\{ij})$ \5
+$\\{icoord}\K((\\{ij})\GG\T{8})-\T{1},\39\\{jcoord}\K((\\{ij})\AND\T{\^ff})-{}$%
+\T{1}\par
+\B\4\D$\\{board}(\|i,\|j)$ \5
+$\\{brd}[\\{pack}(\|i,\39\|j){}$]\par
+\B\4\D$\\{panic}(\\{message})$ \6
+${}\{{}$\5
+\1${}\\{fprintf}(\\{stderr},\39\.{"\%s:\ \%s"},\39\\{message},\39\\{buf}){}$;\5
+${}\\{exit}({-}\T{1}){}$;\5
+${}\}{}$\2\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\&{char} \\{buf}[\\{bufsize}];\6
+\&{int} ${}\\{brd}[\\{pack}(\\{maxn},\39\\{maxn})]{}$;\C{ the given pattern }\6
+\&{int} \\{dmax};\C{ the maximum digit seen }\7
+\X18:Global data structures for Algorithm R\X;\6
+\X19:Subroutines\X;\7
+\\{main}(\,)\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|a${},{}$ \|d${},{}$ \|i${},{}$ \|j${},{}$ \|k${},{}$ %
+\|l${},{}$ \|m${},{}$ \|n${},{}$ \|p${},{}$ \|q${},{}$ \|s${},{}$ \|t${},{}$ %
+\|u${},{}$ \|v${},{}$ \\{di}${},{}$ \\{dj}${},{}$ \\{icoord}${},{}$ \\{jcoord};%
+\7
+\X2:Read the input into \PB{\\{board}}\X;\6
+\X3:Print the item-name line\X;\6
+\&{for} ${}(\|d\K\T{1};{}$ ${}\|d\Z\\{dmax};{}$ ${}\|d\PP){}$\1\5
+\X4:Print all the options for $d$-ominoes\X;\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}\B\X2:Read the input into \PB{\\{board}}\X${}\E{}$\6
+\\{printf}(\.{"|\ filomino-dlx:\\n"});\6
+\&{for} ${}(\|i\K\|n\K\|t\K\T{0};{}$ ${}\|i\Z\\{maxn};{}$ ${}\|i\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\R\\{fgets}(\\{buf},\39\\{bufsize},\39\\{stdin})){}$\1\5
+\&{break};\2\6
+${}\\{printf}(\.{"|\ \%s"},\39\\{buf});{}$\6
+\&{for} ${}(\|j\K\|k\K\T{0};{}$  ; ${}\|j\PP,\39\|k\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{buf}[\|k]\E\.{'\\n'}){}$\1\5
+\&{break};\2\6
+\&{if} ${}(\\{buf}[\|k]\E\.{'.'}){}$\1\5
+\&{continue};\2\6
+\&{if} ${}(\\{buf}[\|k]\G\.{'1'}\W\\{buf}[\|k]\Z\.{'9'}){}$\1\5
+${}\\{board}(\|i,\39\|j)\K\\{buf}[\|k]-\.{'0'},\39\|t\PP;{}$\2\6
+\&{else} \&{if} ${}(\\{buf}[\|k]\G\.{'a'}\W\\{buf}[\|k]\Z\.{'f'}){}$\1\5
+${}\\{board}(\|i,\39\|j)\K\\{buf}[\|k]-\.{'a'}+\T{10},\39\|t\PP;{}$\2\6
+\&{else}\1\5
+\\{panic}(\.{"illegal\ entry"});\2\6
+\&{if} ${}(\\{board}(\|i,\39\|j)>\\{dmax}){}$\1\5
+${}\\{dmax}\K\\{board}(\|i,\39\|j);{}$\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|j>\|n){}$\1\5
+${}\|n\K\|j{}$;\C{ short rows are extended with `\..'s }\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|i>\\{maxn}){}$\1\5
+\\{panic}(\.{"too\ many\ rows"});\2\6
+${}\|m\K\|i;{}$\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|m;{}$ ${}\|i\PP){}$\1\5
+${}\\{board}(\|i,\39{-}\T{1})\K\\{board}(\|i,\39\|n)\K{-}\T{1}{}$;\C{ frame the
+board }\2\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\5
+${}\\{board}({-}\T{1},\39\|j)\K\\{board}(\|m,\39\|j)\K{-}\T{1};{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"OK,\ I've\ read\ \%d\ cl}\)\.{ues\ <=\ \%d,\
+for\ a\ \%dx}\)\.{\%d\ board.\\n"},\39\|t,\39\\{dmax},\39\|m,\39\|n);{}$\6
+${}\\{mm}\K\|m,\39\\{nn}\K\|n{}$;\par
+\U1.\fi
+
+\M{3}There are primary items $ij$ for $0\le i<m$ and $0\le j<n$.
+They represent the cells to be filled.
+
+There are secondary items \.{h$dij$} for each boundary edge of a
+$d$-omino between $(i,j-1)$ and $(i,j)$, for $0\le i<m$ and
+$1\le j< n$. Similarly, secondary items \.{v$dij$} for
+$1\le i<m$ and $0\le j<n$ are for boundaries between
+$(i-1,j)$ and $(i,j)$ in the vertical dimension.
+
+\Y\B\4\X3:Print the item-name line\X${}\E{}$\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|m;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\5
+${}\\{printf}(\.{"\%x\%x\ "},\39\|i,\39\|j);{}$\2\2\6
+\\{printf}(\.{"|"});\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|m;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{1};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|d\K\T{1};{}$ ${}\|d\Z\\{dmax};{}$ ${}\|d\PP){}$\1\5
+${}\\{printf}(\.{"\ h\%x\%x\%x"},\39\|d,\39\|i,\39\|j);{}$\2\2\2\6
+\&{for} ${}(\|i\K\T{1};{}$ ${}\|i<\|m;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|d\K\T{1};{}$ ${}\|d\Z\\{dmax};{}$ ${}\|d\PP){}$\1\5
+${}\\{printf}(\.{"\ v\%x\%x\%x"},\39\|d,\39\|i,\39\|j);{}$\2\2\2\6
+\\{printf}(\.{"\\n"});\par
+\U1.\fi
+
+\M{4}\B\X4:Print all the options for $d$-ominoes\X${}\E{}$\6
+${}\{{}$\1\6
+\&{for} ${}(\\{di}\K\T{0};{}$ ${}\\{di}<\|m;{}$ ${}\\{di}\PP){}$\1\6
+\&{for} ${}(\\{dj}\K\T{0};{}$ ${}\\{dj}<\|n;{}$ ${}\\{dj}\PP){}$\1\5
+\X5:Print the options for $d$-ominoes starting at $(di,dj)$\X;\2\2\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{5}Now comes the interesting part. I assume the reader is familiar
+with Algorithm R in the solution to exercise 7.2.2--75. But we add
+a new twist: A {\it forced move\/} is made to a $d$-cell if we've
+chosen a vertex adjacent to~it. The first vertex ($v_0$) is also
+considered to be forced.
+
+Since I'm not operating with a general graph, the \.{ARCS} and \.{NEXT}
+aspects of Algorithm~R are replaced with a simple scheme: Codes 1, 2, 3, 4
+are used respectively for north, west, east, and south.
+In other words, the operation `$a\gets\.{ARCS($v$)}$' is changed to
+to `$a\gets1'$; `$a\gets\.{NEXT($a$)}$' is changed to `$a\gets a+1$';
+`$a=\Lambda$?' becomes `$a=5$?'. The vertex \.{TIP($a$)} is the
+cell north, west, east, or south of~$v$, depending on~$a$.
+
+A forced move at level $l$ is indicated by $a_l=0$.
+
+If cell $(di,dj)$ is not already filled, we fill it with a $d$-mino
+that uses only unfilled cells and doesn't come next to a $d$-cell.
+
+\Y\B\4\X5:Print the options for $d$-ominoes starting at $(di,dj)$\X${}\E{}$\6
+${}\{{}$\1\6
+${}\|u\K\\{pack}(\\{di},\39\\{dj});{}$\6
+\&{if} ${}(\R\\{board}(\\{di},\39\\{dj})){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|q\K\T{1};{}$ ${}\|q\Z\T{4};{}$ ${}\|q\PP){}$\1\6
+\&{if} ${}(\\{brd}[\|u+\\{dir}[\|q]]\E\|d){}$\1\5
+\&{break};\C{ next to $d$ }\2\2\6
+\&{if} ${}(\|q\Z\T{4}){}$\1\5
+\&{continue};\2\6
+${}\\{forcing}\K\T{0};{}$\6
+\4${}\}{}$\5
+\2\&{else} \&{if} ${}(\\{board}(\\{di},\39\\{dj})\I\|d){}$\1\5
+\&{continue};\2\6
+\&{else}\1\5
+${}\\{forcing}\K\T{1};{}$\2\6
+\X6:Do step R1\X;\6
+\X7:Do step R2\X;\6
+\X11:Do step R3\X;\6
+\X12:Do step R4\X;\6
+\X13:Do step R5\X;\6
+\X15:Do step R6\X;\6
+\X17:Do step R7\X;\6
+\4\\{done}:\5
+\\{checktags}(\,);\6
+\4${}\}{}$\2\par
+\U4.\fi
+
+\M{6}\B\X6:Do step R1\X${}\E{}$\6
+\4\\{r1}:\C{ initialize }\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|m;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\5
+${}\\{tag}[\\{pack}(\|i,\39\|j)]\K\T{0};{}$\2\2\6
+${}\|v\K\\{vv}[\T{0}]\K\|u,\39\\{tag}[\|v]\K\T{1};{}$\6
+${}\|i\K\\{ii}[\T{0}]\K\T{0},\39\|a\K\\{aa}[\T{0}]\K\T{0},\39\|l\K\T{1}{}$;\par
+\U5.\fi
+
+\M{7}At the beginning of step R2, we've just chosen the vertex \PB{\|u},
+which is \PB{$\\{vv}[\|l-\T{1}]$}. If \PB{$\|l>\T{1}$}, it's a vertex adjacent
+to \PB{$\|v\K\\{vv}[\|i]$}
+in direction~\PB{\|a}, where \PB{$\|i\K\\{ii}[\|l-\T{1}]$} and \PB{$\|a\K%
+\\{aa}[\|l-\T{1}]$}.
+
+\Y\B\4\X7:Do step R2\X${}\E{}$\6
+\4\\{r2}:\C{ enter level $l$ }\6
+\&{if} (\\{forcing})\1\5
+\X8:Make forced choices of all \PB{\|d}-cells adjacent to~\PB{\|u}; but \PB{%
+\&{goto} \\{r7}} if there's a problem\X;\2\6
+\&{if} ${}(\|l\E\|d){}$\5
+${}\{{}$\1\6
+\X9:Print an option for the current \PB{\|d}-omino\X;\6
+\X10:Undo the latest forced moves\X;\6
+\4${}\}{}$\2\par
+\U5.\fi
+
+\M{8}Ye olde depth-first search.
+
+If forcing, we backtrack if the \PB{\|d}-omino gets too big, or if
+we're forced to choose a \PB{\|d}-cell whose options have already been
+considered.
+
+If not forcing, we backtrack if we're next to a \PB{\|d}-cell, or if
+solutions for this cell have already been considered.
+
+\Y\B\4\X8:Make forced choices of all \PB{\|d}-cells adjacent to~\PB{\|u}; but %
+\PB{\&{goto} \\{r7}} if there's a problem\X${}\E{}$\6
+\&{for} ${}(\\{stack}[\T{0}]\K\|u,\39\|s\K\T{1};{}$ \|s; \,)\5
+${}\{{}$\1\6
+${}\|u\K\\{stack}[\MM\|s];{}$\6
+\&{for} ${}(\|q\K\T{1};{}$ ${}\|q\Z\T{4};{}$ ${}\|q\PP){}$\5
+${}\{{}$\1\6
+${}\|t\K\|u+\\{dir}[\|q];{}$\6
+\&{if} ${}(\\{brd}[\|t]\I\|d){}$\1\5
+\&{continue};\C{ not a \PB{\|d}-cell }\2\6
+\&{if} (\\{tag}[\|t])\1\5
+\&{continue};\C{ we've already chosen this \PB{\|d}-cell }\2\6
+\&{if} ${}(\|t<\\{vv}[\T{0}]){}$\1\5
+\&{goto} \\{r7};\C{ it came earlier than \PB{$(\\{di},\\{dj})$} }\2\6
+\&{if} ${}(\|l\E\|d){}$\1\5
+\&{goto} \\{r7};\C{ we've already got \PB{\|d} vertices }\2\6
+${}\\{aa}[\|l]\K\T{0},\39\\{vv}[\|l\PP]\K\|t,\39\\{tag}[\|t]\K\T{1},\39%
+\\{stack}[\|s\PP]\K\|t{}$;\C{ forced move to \PB{\|t} }\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U7.\fi
+
+\M{9}OK, we've got a viable \PB{\|d}-omino to pass to the output.
+
+\Y\B\4\X9:Print an option for the current \PB{\|d}-omino\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{curstamp}\PP;{}$\6
+\&{for} ${}(\|p\K\T{0};{}$ ${}\|p<\|d;{}$ ${}\|p\PP){}$\5
+${}\{{}$\1\6
+\\{unpack}(\\{vv}[\|p]);\6
+${}\\{printf}(\.{"\ \%x\%x"},\39\\{icoord},\39\\{jcoord});{}$\6
+${}\\{stamp}[\\{vv}[\|p]]\K\\{curstamp};{}$\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|p\K\T{0};{}$ ${}\|p<\|d;{}$ ${}\|p\PP){}$\5
+${}\{{}$\1\6
+\\{unpack}(\\{vv}[\|p]);\6
+\&{for} ${}(\|q\K\T{1};{}$ ${}\|q\Z\T{4};{}$ ${}\|q\PP){}$\1\6
+\&{if} ${}(\\{stamp}[\\{vv}[\|p]+\\{dir}[\|q]]\I\\{curstamp}){}$\5
+${}\{{}$\C{ boundary edge detected }\1\6
+\&{switch} (\|q)\5
+${}\{{}$\1\6
+\4\&{case} \T{1}:\5
+\&{if} (\\{icoord})\1\5
+${}\\{printf}(\.{"\ v\%x\%x\%x"},\39\|d,\39\\{icoord},\39\\{jcoord}){}$;\5
+\2\&{break};\6
+\4\&{case} \T{2}:\5
+\&{if} (\\{jcoord})\1\5
+${}\\{printf}(\.{"\ h\%x\%x\%x"},\39\|d,\39\\{icoord},\39\\{jcoord}){}$;\5
+\2\&{break};\6
+\4\&{case} \T{3}:\5
+\&{if} ${}(\\{jcoord}<\|n-\T{1}){}$\1\5
+${}\\{printf}(\.{"\ h\%x\%x\%x"},\39\|d,\39\\{icoord},\39\\{jcoord}+\T{1}){}$;\5
+\2\&{break};\6
+\4\&{case} \T{4}:\5
+\&{if} ${}(\\{icoord}<\|m-\T{1}){}$\1\5
+${}\\{printf}(\.{"\ v\%x\%x\%x"},\39\|d,\39\\{icoord}+\T{1},\39\\{jcoord}){}$;\5
+\2\&{break};\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\2\6
+\4${}\}{}$\2\6
+\\{printf}(\.{"\\n"});\6
+\4${}\}{}$\2\par
+\U7.\fi
+
+\M{10}\B\X10:Undo the latest forced moves\X${}\E{}$\6
+\&{for} ${}(\|l\MM;{}$ ${}\\{aa}[\|l]\E\T{0};{}$ ${}\|l\MM){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|l\E\T{0}){}$\1\5
+\&{goto} \\{done};\2\6
+${}\\{tag}[\\{vv}[\|l]]\K\T{0};{}$\6
+\4${}\}{}$\2\par
+\Us7\ET17.\fi
+
+\M{11}\B\X11:Do step R3\X${}\E{}$\6
+\4\\{r3}:\C{ advance \PB{\|a} }\6
+${}\|a\PP{}$;\par
+\U5.\fi
+
+\M{12}\B\X12:Do step R4\X${}\E{}$\6
+\4\\{r4}:\C{ done with level? }\6
+\&{if} ${}(\|a\I\T{5}){}$\1\5
+\&{goto} \\{r5};\2\6
+\&{if} ${}(\|i\E\|l-\T{1}){}$\1\5
+\&{goto} \\{r6};\2\6
+${}\|v\K\\{vv}[\PP\|i],\39\|a\K\T{1}{}$;\par
+\U5.\fi
+
+\M{13}\B\X13:Do step R5\X${}\E{}$\6
+\4\\{r5}:\C{ try \PB{\|a} }\6
+${}\|u\K\|v+\\{dir}[\|a];{}$\6
+\&{if} (\\{brd}[\|u])\1\5
+\&{goto} \\{r3};\C{ not really a neighbor of \PB{\|v} }\2\6
+${}\\{tag}[\|u]\PP;{}$\6
+\&{if} ${}(\\{tag}[\|u]>\T{1}){}$\1\5
+\&{goto} \\{r3};\C{ already chosen }\2\6
+\&{if} ${}(\R\\{forcing}){}$\1\5
+\X14:If \PB{\|u} was already handled, or if it's adjacent to a \PB{\|d}-cell, %
+\PB{\&{goto} \\{r3}}\X;\2\6
+${}\\{ii}[\|l]\K\|i,\39\\{aa}[\|l]\K\|a,\39\\{vv}[\|l]\K\|u,\39\|l\PP;{}$\6
+\&{goto} \\{r2};\par
+\U5.\fi
+
+\M{14}\B\X14:If \PB{\|u} was already handled, or if it's adjacent to a \PB{%
+\|d}-cell, \PB{\&{goto} \\{r3}}\X${}\E{}$\6
+${}\{{}$\1\6
+\&{if} ${}(\|u<\\{vv}[\T{0}]){}$\1\5
+\&{goto} \\{r3};\C{ it's earlier than \PB{$(\\{di},\\{dj})$} }\2\6
+\&{if} (\\{brd}[\|u])\1\5
+\&{goto} \\{r3};\C{ not a blank cell }\2\6
+\&{for} ${}(\|q\K\T{1};{}$ ${}\|q\Z\T{4};{}$ ${}\|q\PP){}$\1\6
+\&{if} ${}(\\{brd}[\|u+\\{dir}[\|q]]\E\|d){}$\1\5
+\&{goto} \\{r3};\2\2\6
+\4${}\}{}$\2\par
+\U13.\fi
+
+\M{15}\B\X15:Do step R6\X${}\E{}$\6
+\4\\{r6}:\C{ backtrack }\6
+\X16:Undo previous forced moves\X;\6
+\&{for} ${}(\|i\K\\{ii}[\|l],\39\|k\K\|i+\T{1};{}$ ${}\|k\Z\|l;{}$ ${}\|k%
+\PP){}$\5
+${}\{{}$\1\6
+${}\|t\K\\{vv}[\|k];{}$\6
+\&{for} ${}(\|q\K\T{1};{}$ ${}\|q\Z\T{4};{}$ ${}\|q\PP){}$\1\6
+\&{if} ${}(\\{brd}[\|t+\\{dir}[\|q]]\E\T{0}){}$\1\5
+${}\\{tag}[\|t+\\{dir}[\|q]]\MM{}$;\C{ untag the neighbors of \PB{\\{vv}[\|k]}
+}\2\2\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|a\K\\{aa}[\|l]+\T{1},\39\|v\K\\{vv}[\|i];{}$ ${}\|a\Z\T{4};{}$
+${}\|a\PP){}$\1\6
+\&{if} ${}(\\{brd}[\|v+\\{dir}[\|a]]\E\T{0}){}$\1\5
+${}\\{tag}[\|v+\\{dir}[\|a]]\MM{}$;\C{ untag late neighbors of \PB{\\{vv}[\|i]}
+}\2\2\6
+${}\|a\K\\{aa}[\|l];{}$\6
+\&{goto} \\{r3};\par
+\U5.\fi
+
+\M{16}\B\X16:Undo previous forced moves\X${}\E{}$\6
+\&{for} ${}(\|l\MM;{}$ ${}\\{aa}[\|l]\E\T{0};{}$ ${}\|l\MM){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|l\E\T{0}){}$\1\5
+\&{goto} \\{done};\2\6
+${}\|t\K\\{vv}[\|l];{}$\6
+\&{for} ${}(\|q\K\T{1};{}$ ${}\|q\Z\T{4};{}$ ${}\|q\PP){}$\1\6
+\&{if} ${}(\\{brd}[\|t+\\{dir}[\|q]]\E\T{0}){}$\1\5
+${}\\{tag}[\|t+\\{dir}[\|q]]\MM{}$;\C{ untag the neighbors of \PB{\\{vv} [ \|l}
+}\2\2\6
+${}\\{tag}[\|t]\K\T{0};{}$\6
+\4${}\}{}$\2\par
+\U15.\fi
+
+\M{17}\B\X17:Do step R7\X${}\E{}$\6
+\4\\{r7}:\C{ recover from bad forcing }\6
+\X10:Undo the latest forced moves\X;\6
+${}\|i\K\\{ii}[\|l],\39\|v\K\\{vv}[\|i],\39\|a\K\\{aa}[\|l];{}$\6
+\&{goto} \\{r3};\par
+\U5.\fi
+
+\M{18}\B\X18:Global data structures for Algorithm R\X${}\E{}$\6
+\&{int} \\{forcing};\6
+\&{int} \\{dir}[\T{5}]${}\K\{\T{0},\39{-}(\T{1}\LL\T{8}),\39{-}\T{1},\39\T{1},%
+\39\T{1}\LL\T{8}\};{}$\6
+\&{int} ${}\\{tag}[\\{pack}(\\{maxn},\39\\{maxn})];{}$\6
+\&{int} \\{vv}[\\{maxd}]${},{}$ \\{aa}[\\{maxd}]${},{}$ \\{ii}[\\{maxd}]${},{}$
+\\{stack}[\\{maxd}];\C{ state variables }\6
+\&{int} \\{curstamp};\6
+\&{int} ${}\\{stamp}[\\{pack}(\\{maxn},\39\\{maxn})];{}$\6
+\&{int} \\{mm}${},{}$ \\{nn};\par
+\U1.\fi
+
+\M{19}\B\X19:Subroutines\X${}\E{}$\6
+\&{void} \\{debug}(\&{char} ${}{*}\\{message}){}$\1\1\2\2\6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"\%s!\\n"},\39\\{message});{}$\6
+\4${}\}{}$\2\par
+\As20\ET21.
+\U1.\fi
+
+\M{20}Here's a handy routine for debugging the tricky parts.
+
+\Y\B\4\X19:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{showtags}(\&{void})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|i${},{}$ \|j;\7
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\\{mm};{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\\{nn};{}$ ${}\|j\PP){}$\1\6
+\&{if} ${}(\\{tag}[\\{pack}(\|i,\39\|j)]){}$\1\5
+${}\\{printf}(\.{"\%x\%x:\%d\\n"},\39\|i,\39\|j,\39\\{tag}[\\{pack}(\|i,\39%
+\|j)]);{}$\2\2\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{21}\B\X19:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{checktags}(\&{void})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|i${},{}$ \|j${},{}$ \|q;\7
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\\{mm};{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\\{nn};{}$ ${}\|j\PP){}$\1\6
+\&{if} ${}(\\{tag}[\\{pack}(\|i,\39\|j)]){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{pack}(\|i,\39\|j)\E\\{vv}[\T{0}]){}$\1\5
+\&{continue};\2\6
+\&{for} ${}(\|q\K\T{1};{}$ ${}\|q\Z\T{4};{}$ ${}\|q\PP){}$\1\6
+\&{if} ${}(\\{pack}(\|i,\39\|j)\E\\{vv}[\T{0}]+\\{dir}[\|q]){}$\1\5
+\&{break};\2\2\6
+\&{if} ${}(\|q\Z\T{4}){}$\1\5
+\&{continue};\2\6
+\\{debug}(\.{"bad\ tag"});\6
+\4${}\}{}$\2\2\2\6
+\4${}\}{}$\2\par
+\fi
+
+\N{1}{22}Index.
+\fi
+
+\inx
+\fin
+\con

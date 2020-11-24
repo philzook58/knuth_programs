@@ -1,0 +1,38 @@
+\I\X6:Do step R1\X
+\U5.
+\I\X7:Do step R2\X
+\U5.
+\I\X11:Do step R3\X
+\U5.
+\I\X12:Do step R4\X
+\U5.
+\I\X13:Do step R5\X
+\U5.
+\I\X15:Do step R6\X
+\U5.
+\I\X17:Do step R7\X
+\U5.
+\I\X18:Global data structures for Algorithm R\X
+\U1.
+\I\X14:If \PB{\|u} was already handled, or if it's adjacent to a \PB{\|d}-cell,
+\PB{\&{goto} \\{r3}}\X
+\U13.
+\I\X8:Make forced choices of all \PB{\|d}-cells adjacent to~\PB{\|u}; but \PB{%
+\&{goto} \\{r7}} if there's a problem\X
+\U7.
+\I\X4:Print all the options for $d$-ominoes\X
+\U1.
+\I\X9:Print an option for the current \PB{\|d}-omino\X
+\U7.
+\I\X3:Print the item-name line\X
+\U1.
+\I\X5:Print the options for $d$-ominoes starting at $(di,dj)$\X
+\U4.
+\I\X2:Read the input into \PB{\\{board}}\X
+\U1.
+\I\X19, 20, 21:Subroutines\X
+\U1.
+\I\X16:Undo previous forced moves\X
+\U15.
+\I\X10:Undo the latest forced moves\X
+\Us7\ET17.

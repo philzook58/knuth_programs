@@ -1,0 +1,12 @@
+\I\X3:Compute the \PB{\\{bad}} table\X
+\U1.
+\I\X6:Get set to handle constraint $(i,1)$\X
+\U5.
+\I\X5:Handle constraint $(i,j)$\X
+\U1.
+\I\X4:Increase the \PB{\\{inx}} table, keeping \PB{$\\{inx}[\|q]\K\T{0}$}\X
+\Us5\ET6.
+\I\X7:Print the grand total\X
+\U1.
+\I\X2:Process the command line\X
+\U1.

@@ -1,0 +1,11 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {Coroutines}{1}{17}{10}{Coroutines}
+\ZZ {A generalized fringe}{1}{20}{12}{A generalized fringe}
+\ZZ {Data structures}{1}{29}{16}{Data structures}
+\ZZ {Doing it}{1}{46}{22}{Doing it}
+\ZZ {Priming the pump}{1}{58}{25}{Priming the pump}
+\ZZ {Comment about looplessness}{1}{62}{26}{Comment about looplessness}
+\ZZ {Index}{1}{63}{27}{Index}
+
+\catcode `\@=12\relax 

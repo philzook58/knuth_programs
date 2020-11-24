@@ -1,0 +1,65 @@
+\I\X18:Check for duplicate item name\X
+\U16.
+\I\X14:Check item \PB{\|p}\X
+\U13.
+\I\X6:Close the files\X
+\U2.
+\I\X17:Convert the prefix to an integer, \PB{\|q}\X
+\U16.
+\I\X36:Cover or partially cover all other items of \PB{\\{cur\_node}}'s option\X
+\U26.
+\I\X21:Create a node for the item named in \PB{\\{buf}[\|p]}\X
+\U20.
+\I\X28:Do special things if enough \PB{\\{mems}} have accumulated\X
+\U26.
+\I\X5:Give statistics about the run\X
+\U2.
+\I\X3, 9, 27:Global variables\X
+\U2.
+\I\X32:If \PB{\\{cur\_node}} is off limits, \PB{\&{goto} \\{backup}}; also
+tweak if needed\X
+\U26.
+\I\X29:Increase \PB{\\{level}} and \PB{\&{goto} \\{forward}}\X
+\U26.
+\I\X19:Initialize \PB{\\{last\_itm}} to a new item with an empty list\X
+\U15.
+\I\X15:Input the item names\X
+\U2.
+\I\X20:Input the options\X
+\U2.
+\I\X22:Insert node \PB{\\{last\_node}} into the list for item \PB{\|k}\X
+\U21.
+\I\X47:Print the profile\X
+\U2.
+\I\X4:Process the command line\X
+\U2.
+\I\X31:Reactivate \PB{\\{best\_itm}} and \PB{\&{goto} \\{backup}}\X
+\U26.
+\I\X44:Record a solution and \PB{\&{goto} \\{backdown}}\X
+\U43.
+\I\X23:Remove \PB{\\{last\_node}} from its item\X
+\U20.
+\I\X30:Report the current move\X
+\U26.
+\I\X25:Report the item totals\X
+\U2.
+\I\X24:Report the successful completion of the input phase\X
+\U2.
+\I\X33:Restore the original state of \PB{\\{best\_itm}}\X
+\U26.
+\I\X16:Scan an item name, possibly prefixed by bounds\X
+\U15.
+\I\X42:Set \PB{\\{best\_itm}} to the best item for branching, and let \PB{%
+\\{score}} be its branching degree\X
+\U26.
+\I\X26:Solve the problem\X
+\U2.
+\I\X11, 12, 13, 34, 35, 38, 39, 40, 41, 45, 46:Subroutines\X
+\U2.
+\I\X7, 8:Type definitions\X
+\U2.
+\I\X37:Uncover or partially uncover all other items of \PB{\\{cur\_node}}'s
+option\X
+\U26.
+\I\X43:Visit a solution and \PB{\&{goto} \\{backdown}}\X
+\U26.

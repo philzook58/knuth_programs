@@ -1,0 +1,8 @@
+\I\X5:Print the answer\X
+\U1.
+\I\X2:Process the command line\X
+\U1.
+\I\X4:Reduce the problem from \PB{\|n} to \PB{$\|n-\T{1}$}\X
+\U1.
+\I\X3:Verify the whirlpool criteria\X
+\U2.

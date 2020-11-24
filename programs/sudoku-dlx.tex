@@ -1,0 +1,133 @@
+\input cwebmac
+
+\N{1}{1}Intro. Given the specification of a sudoku puzzle in \PB{\\{stdin}},
+this program
+outputs {\mc DLX} data for the problem of finding all solutions.
+(I hacked it from my old program {\mc SUDOKU-PREP}, written in 2005.)
+
+The specification consists of nine lines of ASCII characters. If the
+$j$th character of the $i$th line is between \.1 and \.9, it defines the
+value that appears in cell $(i,j)$ of the puzzle.
+
+The puzzle is repeated in a comment line at the beginning of the output.
+
+\Y\B\4\D$\\{bufsize}$ \5
+\T{16}\C{ beware strange behavior if you feed long lines to me! }\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\&{char} \\{buf}[\\{bufsize}];\6
+\&{int} \\{pos}[\T{9}][\T{9}]${},{}$ \\{row}[\T{9}][\T{9}]${},{}$ \\{col}[%
+\T{9}][\T{9}]${},{}$ \\{box}[\T{9}][\T{9}];\C{ things to cover }\7
+\\{main}(\,)\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|c${},{}$ \|j${},{}$ \|k${},{}$ \|d${},{}$ \|x;\7
+\X2:Input the given problem\X;\6
+\X3:Output the comment line\X;\6
+\X4:Output the item-name line\X;\6
+\X5:Output the options\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}\B\D$\\{box}(\|j,\|k)$ \5
+$(((\&{int})((\|j)/\T{3}))*\T{3}+(\&{int})((\|k)/\T{3}){}$)\par
+\Y\B\4\X2:Input the given problem\X${}\E{}$\6
+\&{for} ${}(\|c\K\|j\K\T{0};{}$ ${}\|j<\T{9};{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\R\\{fgets}(\\{buf},\39\\{bufsize},\39\\{stdin})){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"There\ are\ fewer\ tha}\)\.{n\ nine\ lines\ of%
+\ inpu}\)\.{t!\\n"});{}$\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\T{9};{}$ ${}\|k\PP){}$\1\6
+\&{if} ${}(\\{buf}[\|k]\G\.{'1'}\W\\{buf}[\|k]\Z\.{'9'}){}$\5
+${}\{{}$\1\6
+${}\|d\K\\{buf}[\|k]-\.{'1'},\39\|x\K\\{box}(\|j,\39\|k);{}$\6
+${}\\{pos}[\|j][\|k]\K\|d+\T{1};{}$\6
+\&{if} (\\{row}[\|j][\|d])\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"digit\ \%d\ appears\ in}\)\.{\ columns\ \%d\
+and\ \%d\ o}\)\.{f\ row\ \%d!\\n"},\39\|d+\T{1},\39\\{row}[\|j][\|d]-\T{1},\39%
+\|k,\39\|j);{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\6
+${}\\{row}[\|j][\|d]\K\|k+\T{1};{}$\6
+\&{if} (\\{col}[\|k][\|d])\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"digit\ \%d\ appears\ in}\)\.{\ rows\ \%d\ and\
+\%d\ of\ c}\)\.{olumn\ \%d!\\n"},\39\|d+\T{1},\39\\{col}[\|k][\|d]-\T{1},\39%
+\|j,\39\|k);{}$\6
+${}\\{exit}({-}\T{3});{}$\6
+\4${}\}{}$\2\6
+${}\\{col}[\|k][\|d]\K\|j+\T{1};{}$\6
+\&{if} (\\{box}[\|x][\|d])\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"digit\ \%d\ appears\ in}\)\.{\ rows\ \%d\ and\
+\%d\ of\ b}\)\.{ox\ \%d!\\n"},\39\|d+\T{1},\39\\{box}[\|x][\|d]-\T{1},\39\|j,%
+\39\|x);{}$\6
+${}\\{exit}({-}\T{4});{}$\6
+\4${}\}{}$\2\6
+${}\\{box}[\|x][\|d]\K\|j+\T{1};{}$\6
+${}\|c\PP;{}$\6
+\4${}\}{}$\2\2\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"OK,\ I\ found\ \%d\ clue}\)\.{s\ in\ the\
+input\ probl}\)\.{em.\\n"},\39\|c){}$;\par
+\U1.\fi
+
+\M{3}\B\X3:Output the comment line\X${}\E{}$\6
+$\\{fprintf}(\\{stdout},\39\.{"|sudoku"});{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\T{9};{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stdout},\39\.{"!"});{}$\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\T{9};{}$ ${}\|k\PP){}$\1\5
+${}\\{fprintf}(\\{stdout},\39\.{"\%c"},\39\\{pos}[\|j][\|k]\?\.{'0'}+\\{pos}[%
+\|j][\|k]:\.{'.'});{}$\2\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{stdout},\39\.{"\\n"}){}$;\par
+\U1.\fi
+
+\M{4}I'm going to put all \.p items first, then \.r, then \.c, then \.b,
+since this sort-of corresponds to the way many humans approach the subject.
+(And since a branch on \.b is then interesting.)
+
+\Y\B\4\X4:Output the item-name line\X${}\E{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\T{9};{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\T{9};{}$ ${}\|k\PP){}$\1\6
+\&{if} ${}(\R\\{pos}[\|j][\|k]){}$\1\5
+${}\\{fprintf}(\\{stdout},\39\.{"p\%d\%d\ "},\39\|j,\39\|k);{}$\2\2\2\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\T{9};{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\T{9};{}$ ${}\|k\PP){}$\1\6
+\&{if} ${}(\R\\{row}[\|j][\|k]){}$\1\5
+${}\\{fprintf}(\\{stdout},\39\.{"r\%d\%d\ "},\39\|j,\39\|k+\T{1});{}$\2\2\2\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\T{9};{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\T{9};{}$ ${}\|k\PP){}$\1\6
+\&{if} ${}(\R\\{col}[\|j][\|k]){}$\1\5
+${}\\{fprintf}(\\{stdout},\39\.{"c\%d\%d\ "},\39\|j,\39\|k+\T{1});{}$\2\2\2\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\T{9};{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\T{9};{}$ ${}\|k\PP){}$\1\6
+\&{if} ${}(\R\\{box}[\|j][\|k]){}$\1\5
+${}\\{fprintf}(\\{stdout},\39\.{"b\%d\%d\ "},\39\|j,\39\|k+\T{1});{}$\2\2\2\6
+${}\\{fprintf}(\\{stdout},\39\.{"\\n"}){}$;\par
+\U1.\fi
+
+\M{5}\B\X5:Output the options\X${}\E{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\T{9};{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\T{9};{}$ ${}\|k\PP){}$\1\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d<\T{9};{}$ ${}\|d\PP){}$\5
+${}\{{}$\1\6
+${}\|x\K\\{box}(\|j,\39\|k);{}$\6
+\&{if} ${}(\R\\{pos}[\|j][\|k]\W\R\\{row}[\|j][\|d]\W\R\\{col}[\|k][\|d]\W\R%
+\\{box}[\|x][\|d]){}$\1\5
+${}\\{fprintf}(\\{stdout},\39\.{"p\%d\%d\ r\%d\%d\ c\%d\%d\ b}\)\.{\%d\%d\\n"},%
+\39\|j,\39\|k,\39\|j,\39\|d+\T{1},\39\|k,\39\|d+\T{1},\39\|x,\39\|d+\T{1});{}$%
+\2\6
+\4${}\}{}$\2\2\2\par
+\U1.\fi
+
+\N{1}{6}Index.
+\fi
+
+\inx
+\fin
+\con

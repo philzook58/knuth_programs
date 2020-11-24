@@ -1,0 +1,61 @@
+\I\X40:Actually delete option \PB{\|r}\X
+\U31.
+\I\X17:Check for duplicate item name\X
+\U16.
+\I\X15:Check item \PB{\|p}\X
+\U14.
+\I\X20:Create a node for the item named in \PB{\\{buf}[\|p]}\X
+\U19.
+\I\X35:Delete option \PB{\|r}\X
+\U33.
+\I\X33:Delete or shorten option \PB{\|r}\X
+\U32.
+\I\X5, 9, 30:Global variables\X
+\U4.
+\I\X37:Hide the entries of option \PB{\|p}, or \PB{\&{goto} \\{backup}}\X
+\U36.
+\I\X18:Initialize \PB{\\{last\_itm}} to a new item with an empty list\X
+\U16.
+\I\X16:Input the item names\X
+\U4.
+\I\X19:Input the options\X
+\U4.
+\I\X21:Insert node \PB{\\{last\_node}} into the list for item \PB{\|k}\X
+\U20.
+\I\X39:Mark the unnecessary option \PB{\|r}\X
+\U36.
+\I\X44:Output the item names\X
+\U43.
+\I\X45:Output the options\X
+\U43.
+\I\X43:Output the reduced problem\X
+\U4.
+\I\X6:Process the command line\X
+\U4.
+\I\X29:Reduce the problem\X
+\U4.
+\I\X32:Remove item \PB{\|c}, and maybe some options\X
+\U31.
+\I\X22:Remove \PB{\\{last\_node}} from its item\X
+\U19.
+\I\X24:Report the item totals\X
+\U4.
+\I\X23:Report the successful completion of the input phase\X
+\U4.
+\I\X34:Shorten and retain option \PB{\|r}\X
+\U33.
+\I\X36:Stack option \PB{\|r} for deletion if it leaves some primary item
+uncoverable\X
+\U31.
+\I\X11, 12, 13, 14, 27, 28:Subroutines\X
+\U4.
+\I\X41:Take note that \PB{\\{cc}} has no options\X
+\Us29, 35\ETs40.
+\I\X42:Terminate with unfeasible item \PB{\\{cc}}\X
+\U41.
+\I\X31:Try to reduce options in item \PB{\|c}'s list\X
+\U29.
+\I\X7, 8:Type definitions\X
+\U4.
+\I\X38:Unhide the entries of option \PB{\|p}\X
+\U36.

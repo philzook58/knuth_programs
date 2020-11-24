@@ -1,0 +1,418 @@
+\input cwebmac
+\datethis
+\def\falling#1{^{\ff{#1}}}
+\def\ff#1{\mkern1mu\underline{\mkern-1mu#1\mkern-2mu}\mkern2mu}
+
+
+\N{1}{1}Intro. This program, inspired by {\mc HISTOSCAPE-COUNT}, calculates
+the number of $m\times n$ ``whirlpool permutations,'' given $m$ and~$n$.
+
+What's a whirlpool permutation, you ask? Good question.
+An $m\times n$ matrix has $(m-1)(n-1)$ submatrices of size $2\times2$.
+An $m\times n$ whirlpool permutation is a permutation of $(mn)!$
+elements for which the relative order of the elements in each of those
+submatrices is a ``vortex''---that is, it travels a cyclic path from
+smallest to largest, either clockwise or counterclockwise.
+
+Thus there are exactly eight $2\times2$ whirlpool permutations.
+If the entries of the matrix are denoted $abcd$ from top to bottom
+and left to right, they are 1243, 1423, 2134, 2314, 3241, 3421, 4132, 4312.
+One simple test is to compare $a:b$, $b:d$, $d:c$, $c:a$; the number
+of `$<$' must be odd. (Hence the number of `$>$' must also be odd.)
+
+The enumeration is by a somewhat mind-boggling variant of dynamic programming
+that I've not seen before. It needs to represent $n+1$ elements of
+a permutation of~$t$ elements, where $t$ is at most $mn$,
+and there are up to $(mn)\falling{n+1}$ such partial permutations;
+so I can't expect to solve the problem unless $m$ and $n$ are
+fairly small. Even so, when I {\it can\/} solve the problem it's kind of
+thrilling, because this program makes use of a really interesting
+way to represent $t\falling{n+1}$ counts in computer memory.
+
+The same method could actually be used to enumerate matrices of permutations
+whose $2\times2$ submatrices satisfy any arbitrary relations, when those
+relations depend only the relative order of the four elements.
+(Thus any of $2^{24}$ constraints might be prescribed for each of the
+$(m-1)(n-1)$ submatrices. The whirlpool case, which accepts
+only the eight relative orderings listed above, is just one of
+zillions of possibilities.)
+
+It's better to have $m\ge n$. But I'll try some cases with $m<n$ too,
+for purposes of testing.
+
+\Y\B\4\D$\\{maxn}$ \5
+\T{8}\par
+\B\4\D$\\{maxmn}$ \5
+\T{36}\par
+\B\4\D$\|o$ \5
+$\\{mems}\PP{}$\par
+\B\4\D$\\{oo}$ \5
+$\\{mems}\MRL{+{\K}}{}$\T{2}\par
+\B\4\D$\\{ooo}$ \5
+$\\{mems}\MRL{+{\K}}{}$\T{3}\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\&{int} \|m${},{}$ \|n;\C{ command-line parameters }\6
+\&{unsigned} \&{long} \&{long} ${}{*}\\{count}{}$;\C{ the big array of counts }%
+\6
+\&{unsigned} \&{long} \&{long} \\{newcount}[\\{maxmn}];\C{ counts that will
+replace old ones }\6
+\&{unsigned} \&{long} \&{long} \\{mems};\C{ memory references to octabytes }\6
+\&{int} ${}\|x[\\{maxn}+\T{1}]{}$;\C{ indices being looped over }\6
+\&{int} ${}\\{ay}[\\{maxn}+\T{1}];{}$\6
+\&{int} \|l[\\{maxmn}]${},{}$ \|u[\\{maxmn}];\6
+\&{int} ${}\\{tpow}[\\{maxmn}+\T{1}]{}$;\C{ factorial powers $t\falling{n+1}$ }%
+\7
+\X4:Subroutines\X;\7
+\\{main}(\&{int} \\{argc}${},\39{}$\&{char} ${}{*}\\{argv}[\,]){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|a${},{}$ \|b${},{}$ \|c${},{}$ \|d${},{}$ \|i${},{}$ %
+\|j${},{}$ \|k${},{}$ \|p${},{}$ \|q${},{}$ \|r${},{}$ \\{mn}${},{}$ \|t${},{}$
+\\{tt}${},{}$ \\{kk}${},{}$ \\{bb}${},{}$ \\{cc}${},{}$ \\{pdel};\7
+\X2:Process the command line\X;\6
+\&{for} ${}(\|i\K\T{1};{}$ ${}\|i<\|m;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\5
+\X8:Handle constraint $(i,j)$\X;\2\2\6
+\X9:Print the grand total\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}\B\X2:Process the command line\X${}\E{}$\6
+\&{if} ${}(\\{argc}\I\T{3}\V\\{sscanf}(\\{argv}[\T{1}],\39\.{"\%d"},\39{\AND}%
+\|m)\I\T{1}\V\\{sscanf}(\\{argv}[\T{2}],\39\.{"\%d"},\39{\AND}\|n)\I\T{1}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Usage:\ \%s\ m\ n\\n"},\39\\{argv}[\T{0}]);{}$%
+\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\6
+${}\\{mn}\K\|m*\|n;{}$\6
+\&{if} ${}(\|m<\T{2}\V\|m>\\{maxn}\V\|n<\T{2}\V\|n>\\{maxn}\V\\{mn}>%
+\\{maxmn}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ m\ and\ n\ shou}\)\.{ld\ be\ between\
+2\ and\ }\)\.{\%d,\ with\ mn<=\%d!\\n"},\39\\{maxn},\39\\{maxmn});{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|k\K\|n+\T{1};{}$ ${}\|k\Z\\{mn};{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+\&{register} \&{unsigned} \&{long} \&{long} \\{acc}${}\K\T{1};{}$\7
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j\Z\|n;{}$ ${}\|j\PP){}$\1\5
+${}\\{acc}\MRL{*{\K}}\|k-\|j;{}$\2\6
+\&{if} ${}(\\{acc}\G\T{\^80000000}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ mn\\\\falling(}\)\.{n+1)\ must\ be\
+less\ th}\)\.{an\ 2\^31!\\n"});{}$\6
+${}\\{exit}({-}\T{666});{}$\6
+\4${}\}{}$\2\6
+${}\\{tpow}[\|k]\K\\{acc};{}$\6
+\4${}\}{}$\2\6
+${}\\{count}\K{}$(\&{unsigned} \&{long} \&{long} ${}{*}){}$ \\{malloc}${}(%
+\\{tpow}[\\{mn}]*{}$\&{sizeof}(\&{unsigned} \&{long} \&{long}));\6
+\&{if} ${}(\R\\{count}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"I\ couldn't\ allocate}\)\.{\ \%d\ entries\ for%
+\ the\ }\)\.{counts!\\n"},\39\\{tpow}[\\{mn}]);{}$\6
+${}\\{exit}({-}\T{4});{}$\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{3}Suppose I want to represent $n+1$ specified elements of a permutation
+of $t+1$ elements. For example, we might have $n=3$ and $t=8$, and
+the final four elements of a permutation $y_0\ldots y_8$ might be
+$y_5y_6y_7y_8=3142$. There are $(t+1)\falling{n+1}$
+such partial permutations, and I can represent them compactly with
+$n+1$ integer variables $x_{t-n}$, \dots, $x_{t-1}$,~$x_t$, where
+$0\le x_j\le j$. The rule is that $x_j$ is $y_j-w_j$,
+where $w_j$ is the number of elements ``inverted'' by $y_j$
+(the number of elements to the right of $y_j$ that are less than~$y_j$).
+In the example, $w_0w_1w_2w_3=2010$, so $x_5x_6x_7x_8=1132$.
+(Or going backward, if $x_5x_6x_7x_8=3141$ then $y_5y_6y_7y_8=6251$.)
+
+This representation has a beautiful property that we shall exploit.
+Every permutation $y_0\ldots y_t$ of $\{0,\ldots,t\}$ yields
+$t+2$ permutations $y'_0\ldots y'_{t+1}$ of $\{0,\ldots,t+1\}$ if
+we choose $y'_{t+1}$ arbitrarily,
+and then set $y'_j=y_j+\hbox{[$y_j{\ge}y'_{t+1}$]}$.
+For example, if $t=8$ and $y_5y_6y_7y_8=3142$, the ten permutations
+obtained from $y_0\ldots y_8$ will have $y'_5y'_6y'_7y'_8y'_9=
+42530$, 42531, 41532, 41523, 31524, 31425, 31426, 31427, 31428, or 31429.
+And the representations $x'_5x'_6x'_7x'_8x'_9$ of those last five
+elements will simply be respectively 31420, 31421, \dots, 31429!
+In general, we'll have $x'_j=x_j$ for $0\le j\le t$, and $x'_{t+1}=y'_{t+1}$
+will be arbitrary.
+
+\fi
+
+\M{4}Now comes the mind-boggling part.
+I want to maintain a count $c(x_{t-n},\ldots,x_t)$ for each setting of
+the indices $(x_{t-n},\ldots,x_t)$, but I want to put those counts
+into memory in such a way that I won't clobber any of the existing
+counts when I'm updating $t$ to $t+1$. In particular, if $x'_{t+1}\le t-n$,
+I'll want $c(x'_{t+1-n},\ldots,x'_t,x'_{t+1})$ to be stored in exactly
+the same place as $c(x'_{t+1},x_{t+1-n},\ldots,x_t)$ was stored
+in the previous round. But if $x'_{t+1}>t-n$, I'll store
+$c(x'_{t+1-n},\ldots,x'_t,x'_{t+1})$ in a brand-new, previously
+unused location of memory.
+
+Thus we shall use a memory mapping function $\mu_t$, different for each~$t$,
+such that $c(x_{t-n},x_{t-n+1},\ldots,x_t)$ is stored in location
+$\mu_t(x_{t-n},x_{t-n+1},\ldots,x_t)$ during round~$t$ of the computation.
+
+Let's go back to the example in the previous section and apply it to
+whirlpool permutations for $n=3$. Denote the permutation in the first
+three rows by $y_0\ldots y_8$, where $y_6y_7y_8$ is the third row and
+$y_5$ is the last element of the second row. (It's a permutation
+of $\{0,\ldots,8\}$, representing the relative order of a final
+permutation of $\{0,\ldots,3m-1\}$ that will fill the entire matrix.)
+At this point we've
+calculated counts $c(x_5,x_6,x_7,x_8)$ that tell us how many such
+partial whirlpool permutations have any given setting of $y_5y_6y_7y_8$. In
+particular, $c(1,1,3,2)$ counts those for which $y_5y_6y_7y_8=3142$.
+
+To get to the next round, we essentially want to know how many partial
+permutations $y'_0\ldots y'_9$ of $\{0,\ldots,9\}$ will have a given setting
+of $y'_6y'_7y'_8y'_9$; the second row is now irrelevant to future computations.
+It's the same as asking how many permutations have $y_6y_7y_8=142$.
+Answer: $c(0,1,3,2)+c(1,1,3,2)+c(2,1,3,2)+c(3,1,3,2)+c(4,1,3,2)+c(5,1,3,2)$,
+because these count the permutations with $y_5y_6y_7y_8=0142$, 3142,
+5142, 6142, 7142, 8142.
+
+Those six counts $c(k,1,3,2)$ appear in memory locations $\mu_8(k,1,3,2)$,
+for $0\le k\le5$.
+On the next round we'll want $c'(x'_6,x'_7,x'_8,x'_9)=c'(1,3,2,x'_9)$
+to be set to their sum. These new counts will appear in memory locations
+$\mu_9(1,3,2,x'_9)$. So we'd like $\mu_9(1,3,2,k)=\mu_8(k,1,3,2)$
+when $0\le k\le5$.
+
+Let
+$\lambda_t(x_{t-n},\ldots,x_t)=
+\bigl(\cdots((x_tt+x_{t-1})(t-1)+x_{t-2})\cdots\bigr)(t-n+1)+x_{t-n}=
+x_t t\falling n+x_{t-1}(t-1)\falling{n-1}+\cdots x_{t-n}(t-n)\falling0$
+be the standard mixed-radix representation of $(x_t\ldots x_{t-n})$
+with radices $(t+1,t,\ldots,t-n+1)$. When each $x_j$ ranges from 0 to~$j$,
+$\lambda_t(x_{t-n},\ldots,x_t)$ ranges from $\lambda_t(0,\ldots,0)=0$
+to $\lambda_t(t-n,\ldots,t)=(t+1)\falling{n+1}-1$.
+Therefore $\lambda_t$ would be the natural choice for $\mu_t$,
+if we didn't want to avoid clobbering.
+
+Instead, we use $\lambda_t$ only when $x_t$ is sufficiently large:
+We define
+$$\mu_t(x_{t-n},\ldots,x_t)=\cases{
+\lambda_t(x_{t-n},\ldots,x_t),&if $x_t\ge t-n$;\cr
+\mu_{t-1}(x_t,x_{t-n},\ldots,x_{t-1}),&if $x_t\le t-n-1$.\cr}$$
+This recursion terminates with $\mu_n=\lambda_n$, because
+$x_n$ is always $\ge0$. One can also show that
+$\mu_{n+1}=\lambda_{n+1}$.
+
+Back to our earlier example, what is $\mu_8(k,1,3,2)$? Since
+$2\le4$, it's $\mu_7(2,k,1,3)$. And since $3\le3$, it's
+$\mu_6(3,2,k,1)$. Which is $\mu_5(1,3,2,k)$. Finally, therefore,
+if $k\le1$, the value is $\lambda_4(k,1,3,2)=68+k$;
+but if $2\le k\le5$ it's $\lambda_5(1,3,2,k)=60k+34$.
+
+In this program we will keep $x_j$ in location $x_{j\bmod(n+1)}$.
+Consequently the arguments to $\mu_t$ and $\lambda_t$ will always be in
+locations $(x_{(t+1)\bmod(n+1)},x_{(t+2)\bmod(n+1)},\ldots,
+x_{t\bmod(n+1)})$.
+
+\Y\B\4\X4:Subroutines\X${}\E{}$\6
+\&{int} \\{mu}(\&{int} \|t)\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|r${},{}$ \|a${},{}$ \|p${},{}$ \\{tt};\7
+\&{for} ${}(\|r\K\|t\MOD(\|n+\T{1}),\39\\{tt}\K\|t;{}$ \|o${},\39\|x[\|r]<%
+\\{tt}-\|n;{}$ ${}\\{tt}\MM,\39\|r\K(\|r\?\|r-\T{1}:\|n)){}$\1\5
+;\2\6
+\&{for} ${}(\|o,\39\|p\K\|x[\|r],\39\|r\K(\|r\?\|r-\T{1}:\|n),\39\|a\K\T{0};{}$
+${}\|a<\|n;{}$ ${}\|a\PP,\39\|r\K(\|r\?\|r-\T{1}:\|n)){}$\1\5
+${}\|o,\39\|p\K\|p*(\\{tt}-\|a)+\|x[\|r];{}$\2\6
+\&{return} \|p;\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{5}A backtrack essentially like Algorithm 7.2.1.2X nicely runs
+through all combinations of $x_{t-n+1}\ldots x_t$ and
+$y_{t-n+1}\ldots y_t$ simultaneously, while also providing a linked list that
+shows the possibilities for $y_{t-n}$ as $x_{t-n}$ varies
+from 0 to~$t-n$.
+
+The algorithm generates all of the ``$n$-variations'' of
+$\{0,\ldots,t\}$, namely all $n$-tuples $a_0\ldots a_{n-1}$ of distinct
+integers in that set, where $a_j$ corresponds to
+$y_{t-j}$ in the discussion above.
+
+\Y\B\4\X5:Generate the $x$'s and $y$'s\X${}\E{}$\6
+\4\\{x1}:\5
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k\Z\|t;{}$ ${}\|k\PP){}$\1\5
+${}\|o,\39\|l[\|k]\K\|k+\T{1};{}$\2\6
+${}\|o,\39\|l[\|t+\T{1}]\K\T{0}{}$;\C{ circularly linked list }\6
+${}\|k\K\T{0},\39\\{kk}\K\|t\MOD(\|n+\T{1});{}$\6
+\4\\{x2}:\5
+\&{if} ${}(\|k\E\|n){}$\1\5
+\X6:Visit $a_0\ldots a_{n-1}$ and \PB{\&{goto} \\{x6}}\X;\2\6
+${}\\{oo},\39\|p\K\|t+\T{1},\39\|q\K\|l[\|p],\39\|x[\\{kk}]\K\T{0};{}$\6
+\4\\{x3}:\5
+${}\|o,\39\\{ay}[\|k]\K\|q;{}$\6
+\4\\{x4}:\5
+${}\\{ooo},\39\|u[\|k]\K\|p,\39\|l[\|p]\K\|l[\|q],\39\|k\PP,\39\\{kk}\K(\\{kk}%
+\?\\{kk}-\T{1}:\|n);{}$\6
+\&{goto} \\{x2};\6
+\4\\{x5}:\5
+${}\|o,\39\|p\K\|q,\39\|q\K\|l[\|p];{}$\6
+\&{if} ${}(\|q\Z\|t){}$\5
+${}\{{}$\1\6
+${}\\{oo},\39\|x[\\{kk}]\PP;{}$\6
+\&{goto} \\{x3};\6
+\4${}\}{}$\2\6
+\4\\{x6}:\5
+\&{if} ${}(\MM\|k\G\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{kk}\K(\\{kk}\E\|n\?\T{0}:\\{kk}+\T{1});{}$\6
+${}\\{ooo},\39\|p\K\|u[\|k],\39\|q\K\\{ay}[\|k],\39\|l[\|p]\K\|q;{}$\6
+\&{goto} \\{x5};\6
+\4${}\}{}$\2\par
+\U8.\fi
+
+\M{6}At this point we're ready to do the ``inner loop'' calculation,
+by using all counts $c(x_{t-n},\ldots,x_t)$ for $0\le x_{t-n}\le t-n$
+to obtain updated counts that will allow us to increase~$t$. The array
+$a_{n-1}\ldots a_0$ corresponds to $y_{t-n+1}\ldots y_t$ in the discussion
+above; we want to loop over all choices for $y_{t-n}$, namely all
+choices for $a_n$. Fortunately there's a linked list containing precisely
+those choices, beginning at \PB{$\|l[\|t+\T{1}]$}.
+
+\Y\B\4\X6:Visit $a_0\ldots a_{n-1}$ and \PB{\&{goto} \\{x6}}\X${}\E{}$\6
+${}\{{}$\1\6
+\X7:If possible, find \PB{\|p} and \PB{\\{pdel}} so that $c(x_{t-n},%
+\ldots,x_t)$ is \PB{$\\{count}[\|p+\\{pdel}*\|x[\\{kk}]]$}\X;\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d\Z\|t+\T{1};{}$ ${}\|d\PP){}$\1\5
+${}\|o,\39\\{newcount}[\|d]\K\T{0};{}$\2\6
+${}\\{oo},\39\|b\K\\{ay}[\|n-\T{1}],\39\|c\K\\{ay}[\T{0}];{}$\6
+\&{if} ${}(\|b<\|c){}$\1\5
+${}\\{bb}\K\|b,\39\\{cc}\K\|c;{}$\2\6
+\&{else}\1\5
+${}\\{bb}\K\|c,\39\\{cc}\K\|b{}$;\C{ min and max }\2\6
+${}\{{}$\1\6
+\&{register} \&{unsigned} \&{long} \&{long} \\{tmp};\7
+\&{for} ${}(\\{oo},\39\|a\K\|l[\|t+\T{1}],\39\|x[\\{kk}]\K\T{0};{}$ ${}\|a\Z%
+\|t;{}$ \\{oo}${},\39\|a\K\|l[\|a],\39\|x[\\{kk}]\PP){}$\5
+${}\{{}$\1\6
+\&{if} (\\{pdel})\1\5
+${}\\{tmp}\K\\{count}[\|p+\|x[\\{kk}]*\\{pdel}];{}$\2\6
+\&{else}\1\5
+${}\\{tmp}\K\\{count}[\\{mu}(\|t-\|n)]{}$;\C{ if \PB{$\\{pdel}\K\T{0}$} then %
+\PB{$\\{mu}(\|t)\K\\{mu}(\|t-\|n)$} }\2\6
+\&{if} ${}(\|j\E\T{0}){}$\1\5
+${}\\{newcount}[\T{0}]\MRL{+{\K}}\\{tmp}{}$;\C{ no constraint, beginning a new
+row }\2\6
+\&{else} \&{if} ${}(\|a<\\{bb}\V\|a>\\{cc}){}$\5
+${}\{{}$\C{ whirlpool constraint when \PB{\|a} not middle }\1\6
+\&{for} ${}(\|d\K\\{bb}+\T{1};{}$ ${}\|d\Z\\{cc};{}$ ${}\|d\PP){}$\1\5
+${}\\{oo},\39\\{newcount}[\|d]\MRL{+{\K}}\\{tmp};{}$\2\6
+\4${}\}{}$\5
+\2\&{else}\5
+${}\{{}$\C{ whirlpool constraint when \PB{\|d} not middle }\1\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d\Z\\{bb};{}$ ${}\|d\PP){}$\1\5
+${}\\{oo},\39\\{newcount}[\|d]\MRL{+{\K}}\\{tmp};{}$\2\6
+\&{for} ${}(\|d\K\\{cc}+\T{1};{}$ ${}\|d\Z\|t+\T{1};{}$ ${}\|d\PP){}$\1\5
+${}\\{oo},\39\\{newcount}[\|d]\MRL{+{\K}}\\{tmp};{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\&{if} (\\{pdel})\5
+${}\{{}$\1\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d\Z\|t-\|n;{}$ ${}\|d\PP){}$\1\5
+${}\\{oo},\39\\{count}[\|p+\|d*\\{pdel}]\K\\{newcount}[\|j\?\|d:\T{0}];{}$\2\6
+\&{for} ( ; ${}\|d\Z\|t+\T{1};{}$ ${}\|d\PP){}$\1\5
+${}\\{ooo},\39\|x[\\{kk}]\K\|d,\39\\{count}[\\{mu}(\|t+\T{1})]\K\\{newcount}[%
+\|j\?\|d:\T{0}];{}$\2\6
+\4${}\}{}$\5
+\2\&{else}\5
+${}\{{}$\1\6
+\&{for} ${}(\|d\K\T{0};{}$ ${}\|d\Z\|t+\T{1};{}$ ${}\|d\PP){}$\1\5
+${}\\{ooo},\39\|x[\\{kk}]\K\|d,\39\\{count}[\\{mu}(\|t+\T{1})]\K\\{newcount}[%
+\|j\?\|d:\T{0}];{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\&{goto} \\{x6};\6
+\4${}\}{}$\2\par
+\U5.\fi
+
+\M{7}Our example of $\mu_8(k,1,3,2)$ shows that the mission of this
+step is sometimes impossible. But the addressing scheme is usually simple,
+so I decided to exploit that fact. (Being aware, of course, that
+premature optimization is the root of all evil in programming.)
+
+\Y\B\4\X7:If possible, find \PB{\|p} and \PB{\\{pdel}} so that $c(x_{t-n},%
+\ldots,x_t)$ is \PB{$\\{count}[\|p+\\{pdel}*\|x[\\{kk}]]$}\X${}\E{}$\6
+\&{for} ${}(\\{tt}\K\|t,\39\|a\K\T{0},\39\|r\K\|t\MOD(\|n+\T{1});{}$ ${}\|a<%
+\|n;{}$ ${}\|a\PP,\39\\{tt}\MM,\39\|r\K(\|r\?\|r-\T{1}:\|n)){}$\1\6
+\&{if} ${}(\|o,\39\|x[\|r]\G\\{tt}-\|n){}$\1\5
+\&{break};\2\2\6
+\&{if} ${}(\|a\E\|n){}$\1\5
+${}\\{pdel}\K\T{0}{}$;\C{ a difficult case }\2\6
+\&{else}\5
+${}\{{}$\1\6
+\&{for} ${}(\|p\K\\{pdel}\K\T{0},\39\|a\K\T{0};{}$ ${}\|a\Z\|n;{}$ ${}\|a\PP,%
+\39\|r\K(\|r\?\|r-\T{1}:\|n)){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|r\I\\{kk}){}$\1\5
+${}\|p\K\|p*(\\{tt}+\T{1}-\|a)+\|x[\|r],\39\\{pdel}\K\\{pdel}*(\\{tt}+\T{1}-%
+\|a);{}$\2\6
+\&{else}\1\5
+${}\|p\K\|p*(\\{tt}+\T{1}-\|a),\39\\{pdel}\K\\{pdel}*(\\{tt}+\T{1}-\|a)+%
+\T{1};{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U6.\fi
+
+\M{8}\B\X8:Handle constraint $(i,j)$\X${}\E{}$\6
+${}\{{}$\1\6
+${}\|t\K\|n*\|i+\|j-\T{1};{}$\6
+\&{if} ${}(\|t<\|n){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|p\K\T{0};{}$ ${}\|p<\\{tpow}[\|n+\T{1}];{}$ ${}\|p\PP){}$\1\5
+${}\|o,\39\\{count}[\|p]\K\T{1};{}$\2\6
+\&{continue};\6
+\4${}\}{}$\2\6
+\X5:Generate the $x$'s and $y$'s\X;\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ done\ with\ \%d,\%d\ ..}\)\.{\%lld,\ \%lld\
+mems\\n"},\39\|i,\39\|j,\39\\{count}[\T{0}],\39\\{mems});{}$\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{9}\B\D$\\{thresh}$ \5
+\T{1000000000000000000}\par
+\Y\B\4\X9:Print the grand total\X${}\E{}$\6
+\&{for} ${}(\\{newcount}[\T{0}]\K\\{newcount}[\T{1}]\K\\{newcount}[\T{2}]\K%
+\T{0},\39\|p\K\\{tpow}[\\{mn}]-\T{1};{}$ ${}\|p\G\T{0};{}$ ${}\|p\MM){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{count}[\|p]>\\{newcount}[\T{2}]){}$\1\5
+${}\\{newcount}[\T{2}]\K\\{count}[\|p],\39\\{pdel}\K\|p;{}$\2\6
+${}\|o,\39\\{newcount}[\T{0}]\MRL{+{\K}}\\{count}[\|p];{}$\6
+\&{if} ${}(\\{newcount}[\T{0}]\G\\{thresh}){}$\1\5
+${}\\{ooo},\39\\{newcount}[\T{0}]\MRL{-{\K}}\\{thresh},\39\\{newcount}[\T{1}]%
+\PP;{}$\2\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"(Maximum\ count\ \%lld}\)\.{\ is\ obtained\
+for\ par}\)\.{ams"},\39\\{newcount}[\T{2}])\hbox{)};{}$\6
+\&{for} ${}(\|q\K\\{mn}-\|n-\T{1};{}$ ${}\|q<\\{mn};{}$ ${}\|q\PP){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr}\hbox{)},\39\.{"\ \%d"},\39\\{pdel}\MOD(\|q+%
+\T{1}));{}$\6
+${}\\{pdel}\MRL{{/}{\K}}\|q+\T{1};{}$\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{")\\n"}\hbox{(});{}$\6
+\&{if} ${}(\\{newcount}[\T{1}]\E\T{0}){}$\1\5
+${}\\{printf}(\.{"Altogether\ \%lld\ \%dx}\)\.{\%d\ whirlpool\ perms\ (}\)\.{%
+\%lld\ mems).\\n"},\39\\{newcount}[\T{0}],\39\|m,\39\|n,\39\\{mems});{}$\2\6
+\&{else}\1\5
+${}\\{printf}(\.{"Altogether\ \%lld\%018}\)\.{lld\ \%dx\%d\ whirlpool\ }\)%
+\.{perms\ (\%lld\ mems).\\n}\)\.{"},\39\\{newcount}[\T{1}],\39\\{newcount}[%
+\T{0}],\39\|m,\39\|n,\39\\{mems}){}$;\2\par
+\U1.\fi
+
+\N{1}{10}Index.
+\fi
+
+\inx
+\fin
+\con

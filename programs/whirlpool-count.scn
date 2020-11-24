@@ -1,0 +1,15 @@
+\I\X5:Generate the $x$'s and $y$'s\X
+\U8.
+\I\X8:Handle constraint $(i,j)$\X
+\U1.
+\I\X7:If possible, find \PB{\|p} and \PB{\\{pdel}} so that $c(x_{t-n},%
+\ldots,x_t)$ is \PB{$\\{count}[\|p+\\{pdel}*\|x[\\{kk}]]$}\X
+\U6.
+\I\X9:Print the grand total\X
+\U1.
+\I\X2:Process the command line\X
+\U1.
+\I\X4:Subroutines\X
+\U1.
+\I\X6:Visit $a_0\ldots a_{n-1}$ and \PB{\&{goto} \\{x6}}\X
+\U5.

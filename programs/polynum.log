@@ -1,0 +1,118 @@
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdftex 2020.8.19)  24 NOV 2020 13:24
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**polynum.tex
+(./polynum.tex (./cwebmac.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pdftex/pdfcolor.tex)
+\PPbox=\box16
+\MMbox=\box17
+\MGbox=\box18
+\MODbox=\box19
+\bak=\box20
+\bakk=\box21
+\ind=\count27
+\gdepth=\count28
+\secpagedepth=\count29
+\gtitle=\toks13
+\intersecskip=\skip18
+\toksA=\toks14
+\toksB=\toks15
+\toksC=\toks16
+\toksD=\toks17
+\toksE=\toks18
+\toksF=\toks19
+\usersanitizer=\toks20
+\countA=\count30
+\countB=\count31
+\countC=\count32
+\pagewidth=\dimen16
+\pageheight=\dimen17
+\fullpageheight=\dimen18
+\pageshift=\dimen19
+\cont=\write0
+\sbox=\box22
+\lbox=\box23
+\twodigits=\count33
+)
+(/usr/share/texlive/texmf-dist/tex/generic/epsf/epsf.tex
+This is `epsf.tex' v2.7.4 <14 February 2011>
+\epsffilein=\read1
+\epsfframemargin=\dimen20
+\epsfframethickness=\dimen21
+\epsfrsize=\dimen22
+\epsftmp=\dimen23
+\epsftsize=\dimen24
+\epsfxsize=\dimen25
+\epsfysize=\dimen26
+\pspoints=\dimen27
+) *1
+(polyomino.2
+! Could not open file polyomino.2, ignoring it.
+\epsfgetbb ...Could not open file #1, ignoring it}
+                                                  \else {\chardef \other = 1...
+
+\next #1->\epsfgetbb {#1}
+                         \epsfsetgraph {#1}
+\epsfbox #1->\hbox {\possiblyflakyepsfbox {#1}
+                                              }
+l.30 $$\epsfbox{polyomino.2}
+                            $$
+? ^^[[A
+Type <return> to proceed, S to scroll future error messages,
+R to run without stopping, Q to run quietly,
+I to insert something, E to edit your file,
+1 or ... or 9 to ignore the next 1 to 9 tokens of input,
+H for help, X to quit.
+? 
+)
+[1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}
+\openout0 = `polynum.toc'.
+
+]
+Overfull \vbox (35.6737pt too high) has occurred while \output is active
+\vbox(628.74878+0.0)x469.75499, glue set - 1.0
+.\glue(\topskip) 3.05556 plus 60.0
+.\hbox(6.94444+0.0)x469.75499, glue set 432.47714fil
+..\tenrm l
+..\tenrm i
+..\tenrm k
+..\kern-0.27779
+..\tenrm e
+..etc.
+.\penalty 10000
+.\glue(\abovedisplayskip) 12.0 plus 3.0 minus 9.0
+.\glue(\lineskip) 1.0
+.etc.
+
+
+[2
+Non-PDF special ignored!] [3] [4] [5] *8 [6] [7] [8] [9] *19 [10] [11] [12]
+[13] [14] [15] [16] [17] [18] [19] *53 [20] [21] [22] [23] [24] [25] [26]
+[27] *77 [28] [29] [30] *84 [31] [32] [33] [34] [35] [36] *97 [37] [38]
+[39] [40] *105 [41] *109 [42] [43] *114 Index: (./polynum.idx [44] [45])
+[46] Section names: (./polynum.toc) (./polynum.scn [47]) [48]
+Table of contents: (./polynum.toc) [0] )</usr/share/texlive/texmf-dist/fonts/ty
+pe1/public/amsfonts/cm/cmbx10.pfb></usr/share/texlive/texmf-dist/fonts/type1/pu
+blic/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/a
+msfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfont
+s/cm/cmmi5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cm
+mi7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb
+></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/s
+hare/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/tex
+live/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/share/texlive/tex
+mf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/share/texlive/texmf-dist/
+fonts/type1/public/amsfonts/cm/cmsl10.pfb></usr/share/texlive/texmf-dist/fonts/
+type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/
+public/amsfonts/cm/cmsy5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/
+amsfonts/cm/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfont
+s/cm/cmtex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/
+cmti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10
+.pfb>
+Output written on polynum.pdf (49 pages, 439667 bytes).
+PDF statistics:
+ 1933 PDF objects out of 2073 (max. 8388607)
+ 1846 compressed objects within 19 object streams
+ 1 named destinations out of 1000 (max. 500000)
+ 521 words of extra memory for PDF output out of 10000 (max. 10000000)
+

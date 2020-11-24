@@ -1,0 +1,75 @@
+\input cwebmac
+
+\N{1}{1}Intro. This program makes {\mc DLX} data to find all ways to attack
+or occupy
+all cells of an $n\times n$ board with $m$ queens.
+
+\Y\B\4\D$\\{maxn}$ \5
+\T{16}\C{ hexadecimal limitation }\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\&{int} \|m${},{}$ \|n;\C{ command-line parameters }\7
+\\{main}(\&{int} \\{argc}${},\39{}$\&{char} ${}{*}\\{argv}[\,]){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|i${},{}$ \|j${},{}$ \|k;\7
+\X2:Process the command line\X;\6
+\X3:Print the item-name line\X;\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|n;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\5
+\X4:Print the option for a queen at position $(i,j)$\X;\2\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}\B\X2:Process the command line\X${}\E{}$\6
+\&{if} ${}(\\{argc}\I\T{3}\V\\{sscanf}(\\{argv}[\T{1}],\39\.{"\%d"},\39{\AND}%
+\|n)\I\T{1}\V\\{sscanf}(\\{argv}[\T{2}],\39\.{"\%d"},\39{\AND}\|m)\I\T{1}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Usage:\ \%s\ n\ m\\n"},\39\\{argv}[\T{0}]);{}$%
+\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|n>\\{maxn}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ I\ don't\ pres}\)\.{ently\ allow\ n>%
+\%d!\\n"},\39\\{maxn});{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\6
+${}\\{printf}(\.{"|\ \%s\ \%d\ \%d\\n"},\39\\{argv}[\T{0}],\39\|n,\39\|m){}$;%
+\par
+\U1.\fi
+
+\M{3}\B\X3:Print the item-name line\X${}\E{}$\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|n;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|n;{}$ ${}\|j\PP){}$\1\5
+${}\\{printf}(\.{"1:\%d|\%x\%x\ "},\39\|m,\39\|i,\39\|j);{}$\2\2\6
+${}\\{printf}(\.{"\%d|Q\\n"},\39\|m){}$;\par
+\U1.\fi
+
+\M{4}\B\X4:Print the option for a queen at position $(i,j)$\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{printf}(\.{"Q\ \%x\%x"},\39\|i,\39\|j);{}$\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\|n;{}$ ${}\|k\PP){}$\1\6
+\&{if} ${}(\|k\I\|i){}$\1\5
+${}\\{printf}(\.{"\ \%x\%x"},\39\|k,\39\|j);{}$\2\2\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\|n;{}$ ${}\|k\PP){}$\1\6
+\&{if} ${}(\|k\I\|j){}$\1\5
+${}\\{printf}(\.{"\ \%x\%x"},\39\|i,\39\|k);{}$\2\2\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|i+\|k<\|n\W\|j+\|k<\|n;{}$ ${}\|k\PP){}$\1\5
+${}\\{printf}(\.{"\ \%x\%x"},\39\|i+\|k,\39\|j+\|k);{}$\2\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|i-\|k\G\T{0}\W\|j-\|k\G\T{0};{}$ ${}\|k\PP){}$%
+\1\5
+${}\\{printf}(\.{"\ \%x\%x"},\39\|i-\|k,\39\|j-\|k);{}$\2\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|i+\|k<\|n\W\|j-\|k\G\T{0};{}$ ${}\|k\PP){}$\1\5
+${}\\{printf}(\.{"\ \%x\%x"},\39\|i+\|k,\39\|j-\|k);{}$\2\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|i-\|k\G\T{0}\W\|j+\|k<\|n;{}$ ${}\|k\PP){}$\1\5
+${}\\{printf}(\.{"\ \%x\%x"},\39\|i-\|k,\39\|j+\|k);{}$\2\6
+\\{printf}(\.{"\\n"});\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\N{1}{5}Index.
+\fi
+
+\inx
+\fin
+\con

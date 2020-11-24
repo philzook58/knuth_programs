@@ -1,0 +1,12 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {Connectivity}{1}{5}{5}{Connectivity}
+\ZZ {Successive slices}{1}{8}{6}{Successive slices}
+\ZZ {Data structures}{1}{10}{7}{Data structures}
+\ZZ {Computing the successors}{1}{21}{10}{Computing the successors}
+\ZZ {Canonization}{1}{32}{14}{Canonization}
+\ZZ {Loose ends}{1}{44}{17}{Loose ends}
+\ZZ {Output}{1}{51}{20}{Output}
+\ZZ {Index}{1}{65}{24}{Index}
+
+\catcode `\@=12\relax 

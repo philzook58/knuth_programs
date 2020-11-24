@@ -1,0 +1,10 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {Parsing and preparation}{1}{2}{5}{Parsing and preparation}
+\ZZ {Diagnostic routines}{1}{16}{9}{Diagnostic routines}
+\ZZ {Overview of the algorithm}{1}{21}{11}{Overview of the algorithm}
+\ZZ {Doing it}{1}{29}{14}{Doing it}
+\ZZ {A loopless version}{1}{32}{15}{A loopless version}
+\ZZ {Index}{1}{33}{16}{Index}
+
+\catcode `\@=12\relax 

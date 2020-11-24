@@ -1,0 +1,7 @@
+\catcode `\@=11\relax 
+\ZZ {Intro}{1}{1}{1}{Intro}
+\ZZ {Congruence classes}{1}{27}{10}{Congruence classes}
+\ZZ {Graphic output}{1}{37}{14}{Graphic output}
+\ZZ {Index}{1}{40}{15}{Index}
+
+\catcode `\@=12\relax 

@@ -1,0 +1,168 @@
+\input cwebmac
+\def\dts{\mathinner{\ldotp\ldotp}}
+
+
+\N{1}{1}Intro. This program generates {\mc DLX3} data that finds all ``motley
+dissections'' of an $m\times n$ rectangle into subrectangles.
+
+The allowable subrectangles $[a\dts b)\times[c\dts d)$ have
+$0\le a<b\le m$, $0\le c<d\le n$, with $(a,b)\ne(0,m)$ and
+$(c,d)\ne(0,n)$; so there are
+$\bigl({m+1\choose2}-1\bigr)\cdot
+\bigl({n+1\choose2}-1\bigr)$ possibilities.
+Such a dissection is {\it motley\/} if the pairs $(a,b)$ are distinct,
+and so are the pairs $(c,d)$; in other words, no two subrectangles
+have identical top-bottom boundaries or left-right boundaries.
+
+Furthermore we require that every $x\in[0\dts m)$ occurs at least
+once among the $a$'s;
+every $y\in[0\dts n)$ occurs at least once among the $c$'s.
+Otherwise the dissection could be collapsed into a smaller one, by leaving out
+that coordinate value.
+
+It turns out that we can save a factor of (roughly) 2 by using
+symmetry, and looking at the unique rectangles that lie within the
+top and bottom rows of every solution.
+
+\Y\B\4\D$\\{maxd}$ \5
+\T{36}\C{ maximum value for \PB{\|m} or \PB{\|n} }\par
+\B\4\D$\\{encode}(\|v)$ \5
+$((\|v)<\T{10}\?(\|v)+\.{'0'}:(\|v)-\T{10}+\.{'a'}{}$)\C{ encoding for values
+$<36$ }\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\&{int} \|m${},{}$ \|n;\C{ command-line parameters }\7
+\\{main}(\&{int} \\{argc}${},\39{}$\&{char} ${}{*}\\{argv}[\,]){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|a${},{}$ \|b${},{}$ \|c${},{}$ \|d${},{}$ \|j${},{}$ %
+\|k;\7
+\X2:Process the command line\X;\6
+\X3:Output the first line\X;\6
+\&{for} ${}(\|a\K\T{0};{}$ ${}\|a<\|m;{}$ ${}\|a\PP){}$\1\6
+\&{for} ${}(\|b\K\|a+\T{1};{}$ ${}\|b\Z\|m;{}$ ${}\|b\PP){}$\1\6
+\&{if} ${}(\|a\I\T{0}\V\|b\I\|m){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|c\K\T{0};{}$ ${}\|c<\|n;{}$ ${}\|c\PP){}$\1\6
+\&{for} ${}(\|d\K\|c+\T{1};{}$ ${}\|d\Z\|n;{}$ ${}\|d\PP){}$\1\6
+\&{if} ${}(\|c\I\T{0}\V\|d\I\|n){}$\5
+${}\{\X5:Output the line for $[a\dts b]\times[c\dts d]$\X\}{}$\2\2\6
+\4${}\}{}$\2\2\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}\B\X2:Process the command line\X${}\E{}$\6
+\&{if} ${}(\\{argc}\I\T{3}\V\\{sscanf}(\\{argv}[\T{1}],\39\.{"\%d"},\39{\AND}%
+\|m)\I\T{1}\V\\{sscanf}(\\{argv}[\T{2}],\39\.{"\%d"},\39{\AND}\|n)\I\T{1}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Usage:\ \%s\ m\ n\\n"},\39\\{argv}[\T{0}]);{}$%
+\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|m>\\{maxd}\V\|n>\\{maxd}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ m\ and\ n\ must}\)\.{\ be\ at\ most\ %
+\%d!\\n"},\39\\{maxd});{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\6
+${}\\{printf}(\.{"|\ motley-dlx\ \%d\ \%d\\}\)\.{n"},\39\|m,\39\|n){}$;\par
+\U1.\fi
+
+\M{3}The main primary columns \.{$jk$} ensure that
+cell $(j,k)$ is covered, for $0\le j<m$ and $0\le k<n$.
+We also have secondary columns \.{x$ab$} and \.{y$cd$}, to ensure
+that no interval is repeated. And there are primary columns
+\.{x$a$} and \.{y$c$} for the at-least-once conditions.
+
+\Y\B\4\X3:Output the first line\X${}\E{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\|m;{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\|n;{}$ ${}\|k\PP){}$\1\5
+${}\\{printf}(\.{"\ \%c\%c"},\39\\{encode}(\|j),\39\\{encode}(\|k));{}$\2\2\6
+\&{for} ${}(\|a\K\T{1};{}$ ${}\|a<\|m;{}$ ${}\|a\PP){}$\1\5
+${}\\{printf}(\.{"\ 1:\%d|x\%c"},\39\|m-\|a,\39\\{encode}(\|a));{}$\2\6
+\&{for} ${}(\|c\K\T{1};{}$ ${}\|c<\|n;{}$ ${}\|c\PP){}$\1\5
+${}\\{printf}(\.{"\ 1:\%d|y\%c"},\39\|n-\|c,\39\\{encode}(\|c));{}$\2\6
+\\{printf}(\.{"\ |"});\6
+\&{for} ${}(\|a\K\T{0};{}$ ${}\|a<\|m;{}$ ${}\|a\PP){}$\1\6
+\&{for} ${}(\|b\K\|a+\T{1};{}$ ${}\|b\Z\|m;{}$ ${}\|b\PP){}$\1\6
+\&{if} ${}(\|a\I\T{0}\V\|b\I\|m){}$\1\5
+${}\\{printf}(\.{"\ x\%c\%c"},\39\\{encode}(\|a),\39\\{encode}(\|b));{}$\2\2\2\6
+\&{for} ${}(\|c\K\T{0};{}$ ${}\|c<\|n;{}$ ${}\|c\PP){}$\1\6
+\&{for} ${}(\|d\K\|c+\T{1};{}$ ${}\|d\Z\|n;{}$ ${}\|d\PP){}$\1\6
+\&{if} ${}(\|c\I\T{0}\V\|d\I\|n){}$\1\5
+${}\\{printf}(\.{"\ y\%c\%c"},\39\\{encode}(\|c),\39\\{encode}(\|d));{}$\2\2\2\6
+\X6:Output also the secondary columns for symmetry breaking\X;\6
+\\{printf}(\.{"\\n"});\par
+\U1.\fi
+
+\M{4}Now let's look closely at the problem of breaking symmetry.
+For concreteness, let's suppose that $m=7$ and $n=8$.
+Every solution will have exactly one entry with interval \.{x67},
+specifying a rectangle in the bottom row (since $m-1=6$). If that
+rectangle has \.{y57}, say, a left-right reflection would produce
+an equivalent solution with \.{y13}; therefore we do not
+allow the rectangle for which $(a,b,c,d)=(6,7,5,7)$. Similarly
+we disallow $(6,7,c,d)$ whenever $8-d<c$, since we'll find
+all solutions with $(6,7,8-d,8-c)$ that are left-right
+reflections of the solutions excluded.
+
+If $a=6$, $b=7$, and $c+d=8$, left-right reflection doesn't affect
+the rectangle in the bottom row. But we can still break
+the symmetry by looking at the top row, the rectangle whose specifications
+$(a',b',c',d')$ have $(a',b')=(0,1)$. Let's introduce secondary
+columns \.{!1}, \.{!2}, \.{!3}, using \.{!$c$} when
+$c+d=8$ at the bottom. Then if we put \.{!1}, \.{!2}, and \.{!3} on
+every top-row rectangle with $c'+d'>8$, we'll forbid
+such rectangles whenever the bottom-row policy has not
+already broken left-right symmetry. Furthermore, when
+$c'+d'=8$ at the top, we put \.{!1} together with \.{x01} \.{y26},
+and we put both \.{!1} and \.{!2} together with \.{x01} \.{y35}.
+It can be seen that this completely breaks left-symmetry
+in all cases, because no solution has $c=c'$ and $d=d'$.
+
+(Think about it.)
+
+It's tempting to believe, as the author once did, that the same idea
+will break top-bottom symmetry too. But that would be fallacious:
+Once we've fixed attention on the bottommost row while breaking left-right
+symmetry, we no longer have any symmetry between top and bottom.
+
+(Think about that, too.)
+
+\fi
+
+\M{5}\B\X5:Output the line for $[a\dts b]\times[c\dts d]$\X${}\E{}$\6
+\&{if} ${}(\|a\E\|m-\T{1}\W\|c+\|d>\|n){}$\1\5
+\&{continue};\C{ forbid this case }\2\6
+\&{for} ${}(\|j\K\|a;{}$ ${}\|j<\|b;{}$ ${}\|j\PP){}$\1\6
+\&{for} ${}(\|k\K\|c;{}$ ${}\|k<\|d;{}$ ${}\|k\PP){}$\1\5
+${}\\{printf}(\.{"\ \%c\%c"},\39\\{encode}(\|j),\39\\{encode}(\|k));{}$\2\2\6
+\&{if} ${}(\|a\E\|m-\T{1}\W\|c+\|d\E\|n){}$\1\5
+${}\\{printf}(\.{"\ !\%d"},\39\|c){}$;\C{ flag a symmetric bottom row }\2\6
+\&{if} ${}(\|b\E\T{1}\W\|c+\|d\G\|n){}$\5
+${}\{{}$\C{ disallow top rectangle if bottom one is symmetric }\1\6
+\&{if} ${}(\|c+\|d\I\|n){}$\1\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k+\|k<\|n;{}$ ${}\|k\PP){}$\1\5
+${}\\{printf}(\.{"\ !\%d"},\39\|k);{}$\2\2\6
+\&{else}\1\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k<\|c;{}$ ${}\|k\PP){}$\1\5
+${}\\{printf}(\.{"\ !\%d"},\39\|k);{}$\2\2\6
+\4${}\}{}$\2\6
+\&{if} (\|a)\1\5
+${}\\{printf}(\.{"\ x\%c"},\39\\{encode}(\|a));{}$\2\6
+\&{if} (\|c)\1\5
+${}\\{printf}(\.{"\ y\%c"},\39\\{encode}(\|c));{}$\2\6
+${}\\{printf}(\.{"\ x\%c\%c\ y\%c\%c\\n"},\39\\{encode}(\|a),\39\\{encode}(%
+\|b),\39\\{encode}(\|c),\39\\{encode}(\|d)){}$;\par
+\U1.\fi
+
+\M{6}\B\X6:Output also the secondary columns for symmetry breaking\X${}\E{}$\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k+\|k<\|n;{}$ ${}\|k\PP){}$\1\5
+${}\\{printf}(\.{"\ !\%d"},\39\|k){}$;\2\par
+\U3.\fi
+
+\N{1}{7}Index.
+\fi
+
+\inx
+\fin
+\con

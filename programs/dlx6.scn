@@ -1,0 +1,64 @@
+\I\X34:Cache the successful \PB{\\{znode}}\X
+\U36.
+\I\X15:Check for duplicate item name\X
+\U14.
+\I\X13:Check item \PB{\|p}\X
+\U12.
+\I\X5:Close the files\X
+\U2.
+\I\X31:Contribute a primary item to the signature\X
+\U30.
+\I\X32:Contribute a secondary item to the signature\X
+\U30.
+\I\X41:Cover all other items of \PB{\\{cur\_node}}\X
+\U36.
+\I\X18:Create a node for the item named in \PB{\\{buf}[\|p]}\X
+\U17.
+\I\X38:Do special things if enough \PB{\\{mems}} have accumulated\X
+\U36.
+\I\X33:Do the hash lookup\X
+\U30.
+\I\X3, 8, 25, 37:Global variables\X
+\U2.
+\I\X27:Initialize the memo cache\X
+\U2.
+\I\X16:Initialize \PB{\\{last\_itm}} to a new item with an empty list\X
+\U14.
+\I\X14:Input the item names\X
+\U2.
+\I\X17:Input the options\X
+\U2.
+\I\X19:Insert node \PB{\\{last\_node}} into the list for item \PB{\|k}\X
+\U18.
+\I\X30:Look for the current status in the memo cache\X
+\U36.
+\I\X47:Make a new ZDD node\X
+\U36.
+\I\X28:Prepare for a primary item signature\X
+\U27.
+\I\X29:Prepare for a secondary item signature\X
+\U27.
+\I\X50:Print the profile\X
+\U2.
+\I\X4:Process the command line\X
+\U2.
+\I\X46:Register a solution and \PB{\&{goto} \\{recover}}\X
+\U36.
+\I\X20:Remove \PB{\\{last\_node}} from its item list\X
+\U17.
+\I\X22:Report the item totals\X
+\U2.
+\I\X21:Report the successful completion of the input phase\X
+\U2.
+\I\X45:Set \PB{\\{best\_itm}} to the best item for branching\X
+\U36.
+\I\X36:Solve the problem\X
+\U2.
+\I\X10, 11, 12, 39, 40, 43, 44, 48, 49:Subroutines\X
+\U2.
+\I\X6, 7, 23, 24:Type definitions\X
+\U2.
+\I\X42:Uncover all other items of \PB{\\{cur\_node}}\X
+\U36.
+\I\X35:Use previous ZDD data in place of this level's computation\X
+\U36.

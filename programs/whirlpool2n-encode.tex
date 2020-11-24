@@ -1,0 +1,155 @@
+\input cwebmac
+\datethis
+
+\N{1}{1}Intro. This program computes the up-up-or-down-down permutation of
+$\{1,2,\ldots,2n-1\}$ that corresponds to a given $2\times n$
+whirlpool permutation. The latter permutation appears on the command line,
+as a permutation of $\{0,1,\ldots,2n-1\}$, with 0 in the bottom
+left corner.
+
+(I've made no attempt to be efficient.)
+
+(But I didn't go out of my way to be inefficient.)
+
+(Apologies for doing this hurriedly.)
+
+\Y\B\4\D$\\{maxn}$ \5
+\T{100}\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\&{int} ${}\|a[\T{2}*\\{maxn}];{}$\6
+\&{int} ${}\\{used}[\T{2}*\\{maxn}];{}$\6
+\&{int} ${}\\{answer}[\T{2}*\\{maxn}];{}$\7
+\\{main}(\&{int} \\{argc}${},\39{}$\&{char} ${}{*}\\{argv}[\,]){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|i${},{}$ \|j${},{}$ \|k${},{}$ \|n${},{}$ \\{nn}${},{}$ %
+\|t${},{}$ \\{saven};\7
+\X2:Process the command line\X;\6
+\&{for} ( ; ${}\|n>\T{1};{}$ ${}\|n\MM){}$\1\5
+\X4:Reduce the problem from \PB{\|n} to \PB{$\|n-\T{1}$}\X;\2\6
+\X5:Print the answer\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}\B\X2:Process the command line\X${}\E{}$\6
+\&{if} ${}(\\{argc}<\T{5}\V((\\{argc}\AND\T{1})\E\T{0})){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Usage:\ \%s\ a11\ a12\ .}\)\.{..\ a1n\ 0\ a22\
+...\ a2n}\)\.{\\n"},\39\\{argv}[\T{0}]);{}$\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\6
+${}\\{nn}\K\\{argc}-\T{1},\39\|n\K\\{saven}\K\\{nn}/\T{2};{}$\6
+\&{if} ${}(\|n>\\{maxn}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Recompile\ me:\ This\ }\)\.{program\ has\
+maxn=\%d!}\)\.{\\n"},\39\\{maxn});{}$\6
+${}\\{exit}({-}\T{99});{}$\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\\{nn};{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{sscanf}(\\{argv}[\|k+\T{1}],\39\.{"\%d"},\39{\AND}\|a[\|k])\I%
+\T{1}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Bad\ matrix\ entry\ `\%}\)\.{s'!\\n"},\39%
+\\{argv}[\|k+\T{1}]);{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|a[\|k]<\T{0}\V\|a[\|k]\G\\{nn}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Matrix\ entry\ `\%d'\ o}\)\.{ut\ of\ range!%
+\\n"},\39\|a[\|k]);{}$\6
+${}\\{exit}({-}\T{3});{}$\6
+\4${}\}{}$\2\6
+\&{if} (\\{used}[\|a[\|k]])\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Duplicate\ matrix\ en}\)\.{try\ `\%d'!\\n"},%
+\39\|a[\|k]);{}$\6
+${}\\{exit}({-}\T{4});{}$\6
+\4${}\}{}$\2\6
+${}\\{used}[\|a[\|k]]\K\T{1};{}$\6
+\4${}\}{}$\2\6
+\&{if} (\|a[\|n])\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Matrix\ entry\ a21\ sh}\)\.{ould\ be\ zero,\
+not\ \%d}\)\.{!\\n"},\39\|a[\|n]);{}$\6
+${}\\{exit}({-}\T{5});{}$\6
+\4${}\}{}$\2\6
+\X3:Verify the whirlpool criteria\X;\par
+\U1.\fi
+
+\M{3}\B\X3:Verify the whirlpool criteria\X${}\E{}$\6
+\&{for} ${}(\|k\K\|n+\T{1};{}$ ${}\|k<\\{nn};{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}((((\|a[\|k-\|n-\T{1}]<\|a[\|k-\|n])+(\|a[\|k-\|n]<\|a[\|k])+(\|a[%
+\|k]<\|a[\|k-\T{1}])+(\|a[\|k-\T{1}]<\|a[\|k-\|n-\T{1}]))\AND\T{1})\E\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Not\ a\ vortex!\ (\%d\ \%}\)\.{d\ /\ \%d\ \%d)%
+\\n"},\39\|a[\|k-\|n-\T{1}],\39\|a[\|k-\|n],\39\|a[\|k-\T{1}],\39\|a[\|k])%
+\hbox{)};{}$\6
+${}\\{exit}({-}\T{6});{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U2.\fi
+
+\M{4}\B\X4:Reduce the problem from \PB{\|n} to \PB{$\|n-\T{1}$}\X${}\E{}$\6
+${}\{{}$\1\6
+\&{register} \&{int} \|t${},{}$ \\{nnp};\7
+${}\\{nnp}\K\|n+\|n-\T{2};{}$\6
+${}\\{answer}[\\{nnp}+\T{1}]\K\|a[\T{0}],\39\\{answer}[\\{nnp}]\K\|a[\T{1}];{}$%
+\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k<\|n;{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+${}\|t\K\|a[\|k];{}$\6
+\&{if} ${}(\|t>\\{answer}[\\{nnp}+\T{1}]){}$\1\5
+${}\|t\MM;{}$\2\6
+${}\|a[\|k-\T{1}]\K\|t-\T{1};{}$\6
+${}\|t\K\|a[\|k+\\{saven}];{}$\6
+\&{if} ${}(\|t>\\{answer}[\\{nnp}+\T{1}]){}$\1\5
+${}\|t\MM;{}$\2\6
+${}\|a[\|k+\\{saven}-\T{1}]\K\|t-\T{1};{}$\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|t\K\\{nnp}-\|a[\\{saven}],\39\|k\K\T{0};{}$ ${}\|k<\|n-\T{1};{}$
+${}\|k\PP){}$\5
+${}\{{}$\1\6
+${}\|a[\|k]\K(\|a[\|k]+\|t)\MOD\\{nnp};{}$\6
+${}\|a[\|k+\\{saven}]\K(\|a[\|k+\\{saven}]+\|t)\MOD\\{nnp};{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{5}At this point $n=1$, and \PB{\\{answer}} contains numbers that need to
+be ``uncompressed'' because they were the results of a recursive
+computation on a compressed problem.
+
+\Y\B\4\X5:Print the answer\X${}\E{}$\6
+$\|n\K\\{saven};{}$\6
+${}\\{answer}[\T{1}]\K\T{1};{}$\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\\{nn};{}$ ${}\|k\PP){}$\1\5
+${}\\{used}[\|k]\K\T{0};{}$\2\6
+${}\\{used}[\\{answer}[\\{nn}-\T{1}]]\K\\{used}[\\{answer}[\\{nn}-\T{2}]]\K%
+\T{1};{}$\6
+\&{for} ${}(\|k\K\\{nn}-\T{4};{}$ ${}\|k\G\T{0};{}$ ${}\|k\MRL{-{\K}}\T{2}){}$\5
+${}\{{}$\1\6
+${}\|t\K\\{answer}[\|k+\T{1}];{}$\6
+\&{for} ${}(\|j\K\T{1};{}$ ${}\|j\Z\|t;{}$ ${}\|j\PP){}$\1\6
+\&{if} (\\{used}[\|j])\1\5
+${}\|t\PP;{}$\2\2\6
+${}\\{answer}[\|k+\T{1}]\K\|t;{}$\6
+${}\|t\K\\{answer}[\|k];{}$\6
+\&{for} ${}(\|j\K\T{1};{}$ ${}\|j\Z\|t;{}$ ${}\|j\PP){}$\1\6
+\&{if} (\\{used}[\|j])\1\5
+${}\|t\PP;{}$\2\2\6
+${}\\{answer}[\|k]\K\|t;{}$\6
+${}\\{used}[\|t]\K\\{used}[\\{answer}[\|k+\T{1}]]\K\T{1};{}$\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|k\K\\{nn}-\T{1};{}$ \|k; ${}\|k\MM){}$\1\5
+${}\\{printf}(\.{"\ \%d"},\39\\{answer}[\|k]);{}$\2\6
+\\{printf}(\.{"\\n"});\par
+\U1.\fi
+
+\N{1}{6}Index.
+\fi
+
+\inx
+\fin
+\con

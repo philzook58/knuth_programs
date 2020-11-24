@@ -1,0 +1,8 @@
+\catcode `\@=11\relax 
+\ZZ {Intro}{1}{1}{1}{Intro}
+\ZZ {The algorithm}{1}{5}{3}{The algorithm}
+\ZZ {Prematching}{1}{12}{7}{Prematching}
+\ZZ {Matching}{1}{23}{11}{Matching}
+\ZZ {Index}{1}{43}{17}{Index}
+
+\catcode `\@=12\relax 

@@ -1,0 +1,62 @@
+\I\X16, 22, 26, 46:Allocate the arrays\X
+\U4.
+\I\X33:Compute \PB{\|u}'s residue, \PB{\|r}\X
+\U32.
+\I\X34:Decide the question via brute force\X
+\U32.
+\I\X48:Decide the question via outlier testing\X
+\U32.
+\I\X32:Decide whether \PB{\|u} is an Ulam number or an Ulam miss or neither,
+and update the data structures accordingly\X
+\U4.
+\I\X21:Define a new code \PB{\|t}\X
+\U20.
+\I\X6, 15, 25, 35, 45, 57:Global variables\X
+\U4.
+\I\X8:If there's a problem, print a message about \.{Usage:} and \PB{\\{exit}}\X
+\U5.
+\I\X42:If \PB{\|u} is a high near-outlier, record it\X
+\U38.
+\I\X41:If \PB{\|u} is a low near-outlier, record it\X
+\U38.
+\I\X17, 27, 31, 36, 47:Initialize the data structures\X
+\U4.
+\I\X56:Output the \MP\ file\X
+\U4.
+\I\X58:Output the boilerplate\X
+\U56.
+\I\X23:Place \PB{\|u} into the \PB{\\{window}}\X
+\U37.
+\I\X51:Print farewell messages\X
+\U4.
+\I\X55:Print statistics re time and space\X
+\U51.
+\I\X54:Print the compression statistics\X
+\U51.
+\I\X52:Print the gap statistics\X
+\U51.
+\I\X53:Print the histograms\X
+\U51.
+\I\X5:Process the command line\X
+\U4.
+\I\X19:Record \PB{\\{ulamness}} in the \PB{\\{is\_ulam}} or \PB{\\{is\_um}}
+table\X
+\U32.
+\I\X40:Record \PB{\|u} as a high outlier\X
+\U38.
+\I\X39:Record \PB{\|u} as a low outlier\X
+\U38.
+\I\X37, 38, 43, 44:Record \PB{\|u} as the next Ulam number\X
+\U32.
+\I\X7:Respond to a command-line option, setting \PB{\|k} nonzero on error\X
+\U5.
+\I\X20:Store \PB{\\{cur\_code}} and get ready for another\X
+\U19.
+\I\X10, 18, 28, 29, 30:Subroutines\X
+\U4.
+\I\X50:Try to decide by anchoring in \PB{\\{hi\_out}}\X
+\U48.
+\I\X49:Try to decide by anchoring in \PB{\\{lo\_out}}\X
+\U48.
+\I\X9, 24:Type definitions\X
+\U4.

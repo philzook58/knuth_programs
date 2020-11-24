@@ -1,0 +1,13 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {Output}{1}{8}{6}{Output}
+\ZZ {Connectivity}{1}{19}{10}{Connectivity}
+\ZZ {Data structures}{1}{53}{20}{Data structures}
+\ZZ {The main loop}{1}{77}{28}{The main loop}
+\ZZ {Nitty-gritty}{1}{84}{31}{Nitty-gritty}
+\ZZ {Nittier-and-grittier}{1}{97}{37}{Nittier-and-grittier}
+\ZZ {Checkpointing}{1}{105}{41}{Checkpointing}
+\ZZ {Computational experience}{1}{109}{42}{Computational experience}
+\ZZ {Index}{1}{114}{44}{Index}
+
+\catcode `\@=12\relax 

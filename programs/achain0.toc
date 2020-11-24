@@ -1,0 +1,6 @@
+\catcode `\@=11\relax 
+\ZZ {Intro}{1}{1}{1}{Intro}
+\ZZ {The interesting part}{1}{7}{4}{The interesting part}
+\ZZ {Index}{1}{11}{8}{Index}
+
+\catcode `\@=12\relax 

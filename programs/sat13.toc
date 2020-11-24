@@ -1,0 +1,14 @@
+\catcode `\@=11\relax 
+\ZZ {Intro}{1}{1}{1}{Intro}
+\ZZ {The I/O wrapper}{1}{9}{7}{The I\/O wrapper}
+\ZZ {SAT solving, version 13}{1}{26}{14}{SAT solving, version 13}
+\ZZ {Initializing the real data structures}{1}{45}{26}{Initializing the real data structures}
+\ZZ {Forcing}{1}{58}{32}{Forcing}
+\ZZ {Activity scores}{1}{70}{37}{Activity scores}
+\ZZ {Learning from a conflict}{1}{85}{43}{Learning from a conflict}
+\ZZ {Simplifying the learned clause}{1}{99}{48}{Simplifying the learned clause}
+\ZZ {Recycling unhelpful clauses}{1}{109}{54}{Recycling unhelpful clauses}
+\ZZ {Putting it all together}{1}{124}{61}{Putting it all together}
+\ZZ {Index}{1}{141}{71}{Index}
+
+\catcode `\@=12\relax 

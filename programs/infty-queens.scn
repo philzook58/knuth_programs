@@ -1,0 +1,14 @@
+\I\X6:Advance \PB{\\{nphiint}} and \PB{\\{nphifrac}}\X
+\U1.
+\I\X3:Allocate the arrays\X
+\U1.
+\I\X4:Determine $q=q_n$, or \PB{\&{goto} \\{done}} if out of memory\X
+\U1.
+\I\X9:Print the final stats\X
+\U1.
+\I\X2:Process the command line\X
+\U1.
+\I\X8:Record statistics about $q$\X
+\U1.
+\I\X7, 10:Subroutines\X
+\U1.

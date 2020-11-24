@@ -1,0 +1,101 @@
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdftex 2020.8.19)  24 NOV 2020 13:24
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**spgraph.tex
+(./spgraph.tex (./cwebmac.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pdftex/pdfcolor.tex)
+\PPbox=\box16
+\MMbox=\box17
+\MGbox=\box18
+\MODbox=\box19
+\bak=\box20
+\bakk=\box21
+\ind=\count27
+\gdepth=\count28
+\secpagedepth=\count29
+\gtitle=\toks13
+\intersecskip=\skip18
+\toksA=\toks14
+\toksB=\toks15
+\toksC=\toks16
+\toksD=\toks17
+\toksE=\toks18
+\toksF=\toks19
+\usersanitizer=\toks20
+\countA=\count30
+\countB=\count31
+\countC=\count32
+\pagewidth=\dimen16
+\pageheight=\dimen17
+\fullpageheight=\dimen18
+\pageshift=\dimen19
+\cont=\write0
+\sbox=\box22
+\lbox=\box23
+\twodigits=\count33
+)
+(/usr/share/texlive/texmf-dist/tex/generic/epsf/epsf.tex
+This is `epsf.tex' v2.7.4 <14 February 2011>
+\epsffilein=\read1
+\epsfframemargin=\dimen20
+\epsfframethickness=\dimen21
+\epsfrsize=\dimen22
+\epsftmp=\dimen23
+\epsftsize=\dimen24
+\epsfxsize=\dimen25
+\epsfysize=\dimen26
+\pspoints=\dimen27
+) *1
+(spspan.1
+! Could not open file spspan.1, ignoring it.
+\epsfgetbb ...Could not open file #1, ignoring it}
+                                                  \else {\chardef \other = 1...
+
+\next #1->\epsfgetbb {#1}
+                         \epsfsetgraph {#1}
+l.18 \epsfbox{spspan.1}
+                       
+? 
+)
+[1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}
+\openout0 = `spgraph.toc'.
+
+]
+Overfull \vbox (37.89594pt too high) has occurred while \output is active
+\vbox(628.74878+0.0)x469.75499, glue set - 1.0
+.\glue(\topskip) 3.05556 plus 60.0
+.\hbox(6.94444+2.22223)x469.75499, glue set 35.87224fil
+..\tenrm s
+..\tenrm o
+..\glue 3.33333 plus 1.66666 minus 1.11111
+..\tenrm t
+..\tenrm h
+..etc.
+.\penalty 10000
+.\glue(\abovedisplayskip) 12.0 plus 3.0 minus 9.0
+.\glue(\lineskip) 1.0
+.etc.
+
+
+[2
+Non-PDF special ignored!] [3] [4] *8 Index: (./spgraph.idx) [5] Section names:
+(./spgraph.toc) (./spgraph.scn) [6] Table of contents: (./spgraph.toc) [0] )</u
+sr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/sha
+re/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/tex
+live/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/te
+xmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/share/texlive/texmf-dist
+/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/t
+ype1/public/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/pub
+lic/amsfonts/cm/cmr9.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsf
+onts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/c
+m/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtex
+10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb
+></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb>
+Output written on spgraph.pdf (7 pages, 150985 bytes).
+PDF statistics:
+ 207 PDF objects out of 1000 (max. 8388607)
+ 184 compressed objects within 2 object streams
+ 1 named destinations out of 1000 (max. 500000)
+ 73 words of extra memory for PDF output out of 10000 (max. 10000000)
+

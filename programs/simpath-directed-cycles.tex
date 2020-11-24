@@ -1,0 +1,544 @@
+\input cwebmac
+\datethis
+
+
+
+
+
+\N{1}{1}Introduction. This program inputs a directed graph.
+It outputs a not-necessarily-reduced binary decision diagram
+for the family of all simple oriented cycles in that graph.
+
+The format of the output is described in another program,
+{\mc SIMPATH-REDUCE}. Let me just say here that it is intended
+only for computational convenience, not for human readability.
+
+I've tried to make this program simple, whenever I had to
+choose between simplicity and efficiency. But I haven't gone
+out of my way to be inefficient.
+
+(Notes, 30 November 2015: My original version of this program,
+written in August 2008, was hacked from {\mc SIMPATH}. I~don't
+think I used it much at that time, if at all, because
+I made a change in February 2010 to make it compile without
+errors. Today I'm making two fundamental changes:
+(i) Each ``frontier'' in {\mc SIMPATH} was required
+to be an interval of vertices, according to the vertex numbering.
+Now the elements of each frontier are listed explicitly; so
+I needn't waste space by including elements that don't really
+participate in frontier activities. (ii)~I do {\it not\/}
+renumber the vertices.
+The main advantage of these two changes is
+that I can put a dummy vertex at the end, with arcs to and from
+every other vertex; then we get all the simple {\it paths\/} instead
+of all the simple {\it cycles}, while the frontiers stay the same size
+except for the dummy element. And we can modify this program to get all
+the oriented {\it Hamiltonian\/} paths as well.)
+
+\Y\B\4\D$\\{maxn}$ \5
+\T{90}\C{ maximum number of vertices; at most 126 }\par
+\B\4\D$\\{maxm}$ \5
+\T{2000}\C{ maximum number of arcs }\par
+\B\4\D$\\{logmemsize}$ \5
+\T{27}\par
+\B\4\D$\\{memsize}$ \5
+$(\T{1}\LL\\{logmemsize}{}$)\par
+\B\4\D$\\{loghtsize}$ \5
+\T{24}\par
+\B\4\D$\\{htsize}$ \5
+$(\T{1}\LL\\{loghtsize}{}$)\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\8\#\&{include} \.{<string.h>}\6
+\8\#\&{include} \.{"gb\_graph.h"}\6
+\8\#\&{include} \.{"gb\_save.h"}\6
+\&{char} \\{mem}[\\{memsize}];\C{ the big workspace }\6
+\&{unsigned} \&{long} \&{long} \\{tail}${},{}$ \\{boundary}${},{}$ \\{head};\C{
+queue pointers }\6
+\&{unsigned} \&{int} \\{htable}[\\{htsize}];\C{ hash table }\6
+\&{unsigned} \&{int} \\{htid};\C{ ``time stamp'' for hash entries }\6
+\&{int} \\{htcount};\C{ number of entries in the hash table }\6
+\&{int} \\{wrap}${}\K\T{1}{}$;\C{ wraparound counter for hash table clearing }\6
+\&{Vertex} ${}{*}\\{vert}[\\{maxn}+\T{1}];{}$\6
+\&{int} ${}\|f[\\{maxn}+\T{2}],{}$ ${}\\{ff}[\\{maxn}+\T{2}]{}$;\C{ elements of
+the current and the next frontier }\6
+\&{int} \|s${},{}$ \\{ss};\C{ the sizes of \PB{\|f} and \PB{\\{ff}} }\6
+\&{int} ${}\\{curfront}[\\{maxn}+\T{1}],{}$ ${}\\{nextfront}[\\{maxn}+%
+\T{1}]{}$;\C{ inverse frontier map }\6
+\&{int} \\{arcto}[\\{maxm}];\C{ destination number of each arc }\6
+\&{int} ${}\\{firstarc}[\\{maxn}+\T{2}]{}$;\C{ where arcs from a vertex start
+in \PB{\\{arcto}} }\6
+\&{char} ${}\\{mate}[\\{maxn}+\T{3}]{}$;\C{ encoded state }\6
+\&{int} \\{serial}${},{}$ \\{newserial};\C{ state numbers }\7
+\X13:Subroutines\X\7
+\\{main}(\&{int} \\{argc}${},\39{}$\&{char} ${}{*}\\{argv}[\,]){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|i${},{}$ \|j${},{}$ \\{jj}${},{}$ \\{jm}${},{}$ %
+\|k${},{}$ \\{km}${},{}$ \|l${},{}$ \\{ll}${},{}$ \|m${},{}$ \|n${},{}$ %
+\|p${},{}$ \|t${},{}$ \\{hash}${},{}$ \\{sign};\6
+\&{register} \&{Graph} ${}{*}\|g;{}$\6
+\&{register} \&{Arc} ${}{*}\|a,{}$ ${}{*}\|b;{}$\6
+\&{register} \&{Vertex} ${}{*}\|u,{}$ ${}{*}\|v;{}$\7
+\X2:Input the graph\X;\6
+\X3:Reformat the arcs\X;\6
+\X5:Do the algorithm\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}\B\X2:Input the graph\X${}\E{}$\6
+\&{if} ${}(\\{argc}\I\T{2}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Usage:\ \%s\ foo.gb\\n"},\39\\{argv}[%
+\T{0}]);{}$\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\6
+${}\|g\K\\{restore\_graph}(\\{argv}[\T{1}]);{}$\6
+\&{if} ${}(\R\|g){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"I\ can't\ input\ the\ g}\)\.{raph\ \%s\ (panic%
+\ code\ }\)\.{\%ld)!\\n"},\39\\{argv}[\T{1}],\39\\{panic\_code});{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\6
+${}\|n\K\|g\MG\|n;{}$\6
+\&{if} ${}(\|n>\\{maxn}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ that\ graph\ h}\)\.{as\ \%d\ vertices;%
+\ "},\39\|n);{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"I\ can't\ handle\ more}\)\.{\ than\ \%d!\\n"},%
+\39\\{maxn});{}$\6
+${}\\{exit}({-}\T{3});{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|g\MG\|m>\\{maxm}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ that\ graph\ h}\)\.{as\ \%ld\ arcs;\
+"},\39(\|g\MG\|m+\T{1})/\T{2});{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"I\ can't\ handle\ more}\)\.{\ than\ \%d!\\n"},%
+\39\\{maxm});{}$\6
+${}\\{exit}({-}\T{3});{}$\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{3}The arcs will be either $j\to k$ or $j\gets k$ between vertex number~$j$
+and vertex number~$k$, when $j<k$ and those vertices are adjacent in
+the graph. We process them in order of increasing~$j$; but for fixed~$j$,
+the values of~$k$ aren't necessarily increasing.
+
+The $k$ values appear in the \PB{\\{arcto}} array, with $-k$ used for the arcs
+that emanate from~$k$. The arcs for fixed~$j$
+occur in positions \PB{\\{firstarc}[\|j]} through \PB{$\\{firstarc}[\|j+\T{1}]-%
+\T{1}$} of that array.
+
+After this step, we forget the GraphBase data structures and just work
+with our homegrown integer-only representation.
+
+\Y\B\4\X3:Reformat the arcs\X${}\E{}$\6
+\X4:Make the inverse-arc lists\X;\6
+\&{for} ${}(\|m\K\T{0},\39\|k\K\T{1};{}$ ${}\|k\Z\|n;{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+${}\\{firstarc}[\|k]\K\|m;{}$\6
+${}\|v\K\\{vert}[\|k];{}$\6
+${}\\{printf}(\.{"\%d(\%s)\\n"},\39\|k,\39\|v\MG\\{name});{}$\6
+\&{for} ${}(\|a\K\|v\MG\\{arcs};{}$ \|a; ${}\|a\K\|a\MG\\{next}){}$\5
+${}\{{}$\1\6
+${}\|u\K\|a\MG\\{tip};{}$\6
+\&{if} ${}(\|u>\|v){}$\5
+${}\{{}$\1\6
+${}\\{arcto}[\|m\PP]\K\|u-\|g\MG\\{vertices}+\T{1};{}$\6
+\&{if} ${}(\|a\MG\\{len}\E\T{1}){}$\1\5
+${}\\{printf}(\.{"\ ->\ \%ld(\%s)\ \#\%d\\n"},\39\|u-\|g\MG\\{vertices}+\T{1},%
+\39\|u\MG\\{name},\39\|m);{}$\2\6
+\&{else}\1\5
+${}\\{printf}(\.{"\ ->\ \%ld(\%s,\%ld)\ \#\%d}\)\.{\\n"},\39\|u-\|g\MG%
+\\{vertices}+\T{1},\39\|u\MG\\{name},\39\|a\MG\\{len},\39\|m);{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|a\K\|v\MG\\{invarcs};{}$ \|a; ${}\|a\K\|a\MG\\{next}){}$\5
+${}\{{}$\1\6
+${}\|u\K\|a\MG\\{tip};{}$\6
+\&{if} ${}(\|u>\|v){}$\5
+${}\{{}$\1\6
+${}\\{arcto}[\|m\PP]\K{-}(\|u-\|g\MG\\{vertices}+\T{1});{}$\6
+\&{if} ${}(\|a\MG\\{len}\E\T{1}){}$\1\5
+${}\\{printf}(\.{"\ <-\ \%ld(\%s)\ \#\%d\\n"},\39\|u-\|g\MG\\{vertices}+\T{1},%
+\39\|u\MG\\{name},\39\|m);{}$\2\6
+\&{else}\1\5
+${}\\{printf}(\.{"\ <-\ \%ld(\%s,\%ld)\ \#\%d}\)\.{\\n"},\39\|u-\|g\MG%
+\\{vertices}+\T{1},\39\|u\MG\\{name},\39\|a\MG\\{len},\39\|m);{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\\{firstarc}[\|k]\K\|m{}$;\par
+\U1.\fi
+
+\M{4}To aid in the desired sorting, we first create an inverse-arc
+list for each vertex~\PB{\|v}, namely a list of vertices that point to~\PB{%
+\|v}.
+
+\Y\B\4\D$\\{invarcs}$ \5
+$\|y.{}$\|A\par
+\Y\B\4\X4:Make the inverse-arc lists\X${}\E{}$\6
+\&{for} ${}(\|v\K\|g\MG\\{vertices};{}$ ${}\|v<\|g\MG\\{vertices}+\|n;{}$ ${}%
+\|v\PP){}$\1\5
+${}\|v\MG\\{invarcs}\K\NULL;{}$\2\6
+\&{for} ${}(\|v\K\|g\MG\\{vertices};{}$ ${}\|v<\|g\MG\\{vertices}+\|n;{}$ ${}%
+\|v\PP){}$\5
+${}\{{}$\1\6
+${}\\{vert}[\|v-\|g\MG\\{vertices}+\T{1}]\K\|v;{}$\6
+\&{for} ${}(\|a\K\|v\MG\\{arcs};{}$ \|a; ${}\|a\K\|a\MG\\{next}){}$\5
+${}\{{}$\1\6
+\&{register} \&{Arc} ${}{*}\|b\K\\{gb\_virgin\_arc}(\,);{}$\7
+${}\|u\K\|a\MG\\{tip};{}$\6
+${}\|b\MG\\{tip}\K\|v;{}$\6
+${}\|b\MG\\{len}\K\|a\MG\\{len};{}$\6
+${}\|b\MG\\{next}\K\|u\MG\\{invarcs};{}$\6
+${}\|u\MG\\{invarcs}\K\|b;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U3.\fi
+
+\N{1}{5}The algorithm.
+Now comes the fun part. We systematically construct a binary decision
+diagram for all simple paths by working top-down, considering the
+arcs in \PB{\\{arcto}}, one by one.
+
+When we're dealing with arc \PB{\|i}, we've already constructed a table of
+all possible states that might arise when each of the previous arcs has
+been chosen-or-not, except for states that obviously cannot be
+part of a simple path.
+
+Arc \PB{\|i} runs from vertex \PB{\|j} to vertex \PB{$\|k\K\\{arcto}[\|i]$},
+or from \PB{$\|k\K{-}\\{arcto}[\|i]$} to~\PB{\|j}.
+
+Let $F_i=\{v_1,\ldots,v_s\}$ be the {\it frontier\/} at arc~\PB{\|i},
+namely the set of vertex numbers \PB{$\G$ \|j} that appear in arcs~\PB{$<$ %
+\|i}.
+
+The state before we decide whether or not to include arc~\PB{\|i} is
+represented by a table of values \PB{\\{mate}[\|t]}, for $t\in F_i\cup\{j,k\}$,
+with the following significance:
+If \PB{$\\{mate}[\|t]\K\|t$}, the previous arcs haven't touched vertex \PB{%
+\|t}.
+If \PB{$\\{mate}[\|t]\K\|u$} and \PB{$\|u\I\|t$}, the previous arcs have made a
+simple directed
+path from \PB{\|t} to \PB{\|u}.
+If \PB{$\\{mate}[\|t]\K{-}\|u$}, the previous arcs have made a simple directed
+path from \PB{\|u} to \PB{\|t}.
+If \PB{$\\{mate}[\|t]\K\T{0}$}, the previous arcs have ``saturated'' vertex~%
+\PB{\|t}; we can't
+touch it again.
+
+The \PB{\\{mate}} information is all that we need to know about the behavior of
+previous arcs. And it's easily updated when we add the \PB{\|i}th arc (or not).
+So each ``state'' is equivalent to a \PB{\\{mate}} table, consisting of
+\PB{\|s} numbers, where $s$ is the size of~$F_i$.
+
+The states are stored in a queue, indexed by 64-bit numbers
+\PB{\\{tail}}, \PB{\\{boundary}}, and \PB{\\{head}}, where \PB{$\\{tail}\Z%
+\\{boundary}\Z\\{head}$}.
+Between \PB{\\{tail}} and \PB{\\{boundary}} are the pre-arc-\PB{\|i} states
+that haven't yet
+been processed; between \PB{\\{boundary}} and \PB{\\{head}} are the post-arc-%
+\PB{\|i} states
+that will be considered later. The states before \PB{\\{boundary}}
+are sequences of \PB{\|s} bytes each, and the states after \PB{\\{boundary}}
+are sequences of \PB{\\{ss}} bytes each, where \PB{\\{ss}} is the size
+of~$F_{i+1}$.
+
+(Exception: If \PB{$\|s\K\T{0}$}, we use one byte to represent the state,
+although
+we ignore it when reading from the queue later. In this way
+we know how many states are present.)
+
+Bytes of the queue are stored in \PB{\\{mem}}, which wraps around modulo \PB{%
+\\{memsize}}.
+We ensure that \PB{$\\{head}-\\{tail}$} never exceeds \PB{\\{memsize}}.
+
+\Y\B\4\X5:Do the algorithm\X${}\E{}$\6
+\&{for} ${}(\|t\K\T{1};{}$ ${}\|t\Z\|n;{}$ ${}\|t\PP){}$\1\5
+${}\\{mate}[\|t]\K\|t;{}$\2\6
+\X6:Initialize the queue\X;\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|m;{}$ ${}\|i\PP){}$\5
+${}\{{}$\1\6
+${}\\{printf}(\.{"\#\%d:\\n"},\39\|i+\T{1}){}$;\C{ announce that we're
+beginning a new arc }\6
+${}\\{fprintf}(\\{stderr},\39\.{"Beginning\ arc\ \%d\ (s}\)\.{erial=%
+\%d,head-tail=\%}\)\.{lld)\\n"},\39\|i+\T{1},\39\\{serial},\39\\{head}-%
+\\{tail});{}$\6
+\\{fflush}(\\{stderr});\6
+\X7:Process arc \PB{\|i}\X;\6
+\4${}\}{}$\2\6
+${}\\{printf}(\.{"\%x:0,0\\n"},\39\\{serial}){}$;\par
+\U1.\fi
+
+\M{6}Each state for a particular arc gets a distinguishing number, where
+its ZDD instructions begin.
+Two states are special: 0 means the losing state, when a simple path
+is impossible; 1 means the winning state, when a simple path has been
+completed. The other states are 2 or more.
+
+Initially \PB{\|i} will be zero, and the queue is empty. We'll want
+\PB{\\{jj}} to be the the \PB{\|j} vertex of arc \PB{$\|i+\T{1}$}, and \PB{%
+\\{ss}} to be the
+size of~$F_{i+1}$. Also \PB{\\{serial}} is the identifying number for
+arc~\PB{$\|i+\T{1}$}.
+
+\Y\B\4\X6:Initialize the queue\X${}\E{}$\6
+$\\{jj}\K\T{1},\39\\{ss}\K\T{0};{}$\6
+\&{while} ${}(\\{firstarc}[\\{jj}+\T{1}]\E\T{0}){}$\1\5
+${}\\{jj}\PP{}$;\C{ unnecessary unless vertex 1 is isolated }\2\6
+${}\\{tail}\K\\{head}\K\T{0};{}$\6
+${}\\{serial}\K\T{2}{}$;\par
+\U5.\fi
+
+\M{7}The output format on \PB{\\{stdout}} simply shows the identifying numbers
+of a state
+and its two successors, in hexadecimal.
+
+\Y\B\4\D$\\{trunc}(\\{addr})$ \5
+$((\\{addr})\AND(\\{memsize}-\T{1}){}$)\par
+\Y\B\4\X7:Process arc \PB{\|i}\X${}\E{}$\6
+\&{if} ${}(\\{ss}\E\T{0}){}$\1\5
+${}\\{head}\PP{}$;\C{ put a dummy byte into the queue }\2\6
+${}\\{boundary}\K\\{head},\39\\{htcount}\K\T{0},\39\\{htid}\K(\|i+\\{wrap})\LL%
+\\{logmemsize};{}$\6
+\&{if} ${}(\\{htid}\E\T{0}){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\\{hash}\K\T{0};{}$ ${}\\{hash}<\\{htsize};{}$ ${}\\{hash}\PP){}$\1%
+\5
+${}\\{htable}[\\{hash}]\K\T{0};{}$\2\6
+${}\\{wrap}\PP,\39\\{htid}\K\T{1}\LL\\{logmemsize};{}$\6
+\4${}\}{}$\2\6
+${}\\{newserial}\K\\{serial}+(\\{head}-\\{tail})/(\\{ss}\?\\{ss}:\T{1});{}$\6
+${}\|j\K\\{jj},\39\\{sign}\K\\{arcto}[\|i],\39\|k\K(\\{sign}>\T{0}\?%
+\\{sign}:{-}\\{sign}),\39\|s\K\\{ss};{}$\6
+\&{for} ${}(\|p\K\T{0};{}$ ${}\|p<\|s;{}$ ${}\|p\PP){}$\1\5
+${}\|f[\|p]\K\\{ff}[\|p];{}$\2\6
+\X8:Compute \PB{\\{jj}} and $F_{i+1}$\X;\6
+\&{while} ${}(\\{tail}<\\{boundary}){}$\5
+${}\{{}$\1\6
+${}\\{printf}(\.{"\%x:"},\39\\{serial});{}$\6
+${}\\{serial}\PP;{}$\6
+\X9:Unpack a state, and move \PB{\\{tail}} up\X;\6
+\X11:Print the successor if arc \PB{\|i} is not chosen\X;\6
+\\{printf}(\.{","});\6
+\X10:Print the successor if arc \PB{\|i} is chosen\X;\6
+\\{printf}(\.{"\\n"});\6
+\4${}\}{}$\2\par
+\U5.\fi
+
+\M{8}Here we set \PB{\\{nextfront}[\|t]} to \PB{$\|i+\T{1}$} whenever $t\in
+F_{i+1}$.
+And we also set \PB{\\{curfront}[\|t]} to \PB{$\|i+\T{1}$} wheneer $t\in F_i$;
+I~use \PB{$\|i+\T{1}$}, not~\PB{\|i}, because the \PB{\\{curfront}} array is
+initially zero.
+
+\Y\B\4\X8:Compute \PB{\\{jj}} and $F_{i+1}$\X${}\E{}$\6
+\&{while} ${}(\\{jj}\Z\|n\W\\{firstarc}[\\{jj}+\T{1}]\E\|i+\T{1}){}$\1\5
+${}\\{jj}\PP;{}$\2\6
+\&{for} ${}(\|p\K\\{ss}\K\T{0};{}$ ${}\|p<\|s;{}$ ${}\|p\PP){}$\5
+${}\{{}$\1\6
+${}\|t\K\|f[\|p];{}$\6
+${}\\{curfront}[\|t]\K\|i+\T{1};{}$\6
+\&{if} ${}(\|t\G\\{jj}){}$\5
+${}\{{}$\1\6
+${}\\{nextfront}[\|t]\K\|i+\T{1};{}$\6
+${}\\{ff}[\\{ss}\PP]\K\|t;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|j\E\\{jj}\W\\{nextfront}[\|j]\I\|i+\T{1}){}$\1\5
+${}\\{nextfront}[\|j]\K\|i+\T{1},\39\\{ff}[\\{ss}\PP]\K\|j;{}$\2\6
+\&{if} ${}(\|k\G\\{jj}\W\\{nextfront}[\|k]\I\|i+\T{1}){}$\1\5
+${}\\{nextfront}[\|k]\K\|i+\T{1},\39\\{ff}[\\{ss}\PP]\K\|k{}$;\2\par
+\U7.\fi
+
+\M{9}This step sets \PB{\\{mate}[\|t]} for all $t\in F_i\cup\{j,k\}$, based on
+a
+queued state, while taking \PB{\|s} bytes out of the queue.
+
+\Y\B\4\X9:Unpack a state, and move \PB{\\{tail}} up\X${}\E{}$\6
+\&{if} ${}(\|s\E\T{0}){}$\1\5
+${}\\{tail}\PP;{}$\2\6
+\&{else}\5
+${}\{{}$\1\6
+\&{for} ${}(\|p\K\T{0};{}$ ${}\|p<\|s;{}$ ${}\|p\PP,\39\\{tail}\PP){}$\5
+${}\{{}$\1\6
+${}\|t\K\|f[\|p];{}$\6
+${}\\{mate}[\|t]\K\\{mem}[\\{trunc}(\\{tail})];{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{curfront}[\|j]\I\|i+\T{1}){}$\1\5
+${}\\{mate}[\|j]\K\|j;{}$\2\6
+\&{if} ${}(\\{curfront}[\|k]\I\|i+\T{1}){}$\1\5
+${}\\{mate}[\|k]\K\|k{}$;\2\par
+\U7.\fi
+
+\M{10}Here's where we update the mates. The order of doing this is carefully
+chosen so that it works fine when \PB{$\\{mate}[\|j]\K\|j$} and/or \PB{$%
+\\{mate}[\|k]\K\|k$}.
+
+\Y\B\4\X10:Print the successor if arc \PB{\|i} is chosen\X${}\E{}$\6
+\&{if} ${}(\\{sign}>\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{jm}\K\\{mate}[\|j],\39\\{km}\K\\{mate}[\|k];{}$\6
+\&{if} ${}(\\{jm}\E\|j){}$\1\5
+${}\\{jm}\K{-}\|j;{}$\2\6
+\&{if} ${}(\\{jm}\G\T{0}\V\\{km}\Z\T{0}){}$\1\5
+\\{printf}(\.{"0"});\C{ we mustn't touch a saturated vertex }\2\6
+\&{else} \&{if} ${}(\\{jm}\E{-}\|k){}$\1\5
+\X12:Print 1 or 0, depending on whether this arc wins or loses\X\2\6
+\&{else}\5
+${}\{{}$\1\6
+${}\\{mate}[\|j]\K\T{0},\39\\{mate}[\|k]\K\T{0};{}$\6
+${}\\{mate}[{-}\\{jm}]\K\\{km},\39\\{mate}[\\{km}]\K\\{jm};{}$\6
+${}\\{printstate}(\|j,\39\\{jj},\39\|i,\39\|k);{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\5
+\2\&{else}\5
+${}\{{}$\1\6
+${}\\{jm}\K\\{mate}[\|j],\39\\{km}\K\\{mate}[\|k];{}$\6
+\&{if} ${}(\\{km}\E\|k){}$\1\5
+${}\\{km}\K{-}\|k;{}$\2\6
+\&{if} ${}(\\{jm}\Z\T{0}\V\\{km}\G\T{0}){}$\1\5
+\\{printf}(\.{"0"});\C{ we mustn't touch a saturated vertex }\2\6
+\&{else} \&{if} ${}(\\{km}\E{-}\|j){}$\1\5
+\X12:Print 1 or 0, depending on whether this arc wins or loses\X\2\6
+\&{else}\5
+${}\{{}$\1\6
+${}\\{mate}[\|j]\K\T{0},\39\\{mate}[\|k]\K\T{0};{}$\6
+${}\\{mate}[\\{jm}]\K\\{km},\39\\{mate}[{-}\\{km}]\K\\{jm};{}$\6
+${}\\{printstate}(\|j,\39\\{jj},\39\|i,\39\|k);{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U7.\fi
+
+\M{11}\B\X11:Print the successor if arc \PB{\|i} is not chosen\X${}\E{}$\6
+$\\{printstate}(\|j,\39\\{jj},\39\|i,\39\|k){}$;\par
+\U7.\fi
+
+\M{12}See the note below regarding a change that will restrict consideration
+to Hamiltonian paths. A similar change is needed here.
+
+\Y\B\4\X12:Print 1 or 0, depending on whether this arc wins or loses\X${}\E{}$\6
+${}\{{}$\1\6
+\&{for} ${}(\|p\K\T{0};{}$ ${}\|p<\|s;{}$ ${}\|p\PP){}$\5
+${}\{{}$\1\6
+${}\|t\K\|f[\|p];{}$\6
+\&{if} ${}(\|t\I\|j\W\|t\I\|k\W\\{mate}[\|t]\W\\{mate}[\|t]\I\|t){}$\1\5
+\&{break};\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|p\E\|s){}$\1\5
+\\{printf}(\.{"1"});\C{ we win: this cycle is all by itself }\2\6
+\&{else}\1\5
+\\{printf}(\.{"0"});\C{ we lose: there's junk outside this cycle }\2\6
+\4${}\}{}$\2\par
+\U10.\fi
+
+\M{13}The \PB{\\{printstate}} subroutine does the rest of the work. It makes
+sure
+that no incomplete paths linger in positions that are about to disappear
+from the current frontier; and it puts the \PB{\\{mate}} entries of the next
+frontier
+into the queue, checking to see if that state was already there.
+
+If `\PB{$\\{mate}[\|t]\I\|t$}' is removed from the condition below, we get
+Hamiltonian cycles only (I mean, simple cycles that include every vertex).
+
+\Y\B\4\X13:Subroutines\X${}\E{}$\6
+\&{void} \\{printstate}(\&{int} \|j${},\39{}$\&{int} \\{jj}${},\39{}$\&{int} %
+\|i${},\39{}$\&{int} \|k)\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|h${},{}$ \\{hh}${},{}$ \|p${},{}$ \|t${},{}$ %
+\\{tt}${},{}$ \\{hash};\7
+\&{for} ${}(\|p\K\T{0};{}$ ${}\|p<\|s;{}$ ${}\|p\PP){}$\5
+${}\{{}$\1\6
+${}\|t\K\|f[\|p];{}$\6
+\&{if} ${}(\\{nextfront}[\|t]\I\|i+\T{1}\W\\{mate}[\|t]\W\\{mate}[\|t]\I\|t){}$%
+\1\5
+\&{break};\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|p<\|s){}$\1\5
+\\{printf}(\.{"0"});\C{ incomplete junk mustn't be left hanging }\2\6
+\&{else} \&{if} ${}(\\{nextfront}[\|j]\I\|i+\T{1}\W\\{mate}[\|j]\W\\{mate}[\|j]%
+\I\|j){}$\1\5
+\\{printf}(\.{"0"});\2\6
+\&{else} \&{if} ${}(\\{nextfront}[\|k]\I\|i+\T{1}\W\\{mate}[\|k]\W\\{mate}[\|k]%
+\I\|k){}$\1\5
+\\{printf}(\.{"0"});\2\6
+\&{else} \&{if} ${}(\\{ss}\E\T{0}){}$\1\5
+${}\\{printf}(\.{"\%x"},\39\\{newserial});{}$\2\6
+\&{else}\5
+${}\{{}$\1\6
+\&{if} ${}(\\{head}+\\{ss}-\\{tail}>\\{memsize}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Oops,\ I'm\ out\ of\ me}\)\.{mory:\ memsize=%
+\%d,\ se}\)\.{rial=\%d!\\n"},\39\\{memsize},\39\\{serial});{}$\6
+${}\\{exit}({-}\T{69});{}$\6
+\4${}\}{}$\2\6
+\X14:Move the current state into position after \PB{\\{head}}, and compute \PB{%
+\\{hash}}\X;\6
+\X15:Find the first match, \PB{\\{hh}}, for the current state after \PB{%
+\\{boundary}}\X;\6
+${}\|h\K\\{trunc}(\\{hh}-\\{boundary})/\\{ss};{}$\6
+${}\\{printf}(\.{"\%x"},\39\\{newserial}+\|h);{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{14}\B\X14:Move the current state into position after \PB{\\{head}}, and
+compute \PB{\\{hash}}\X${}\E{}$\6
+\&{for} ${}(\|p\K\T{0},\39\|h\K\\{trunc}(\\{head}),\39\\{hash}\K\T{0};{}$ ${}%
+\|p<\\{ss};{}$ ${}\|p\PP,\39\|h\K\\{trunc}(\|h+\T{1})){}$\5
+${}\{{}$\1\6
+${}\|t\K\\{ff}[\|p];{}$\6
+${}\\{mem}[\|h]\K\\{mate}[\|t];{}$\6
+${}\\{hash}\K\\{hash}*\T{31415926525}+\\{mate}[\|t];{}$\6
+\4${}\}{}$\2\par
+\U13.\fi
+
+\M{15}The hash table is automatically cleared whenever \PB{\\{htid}} is
+increased,
+because we store \PB{\\{htid}} with each relevant table entry.
+
+\Y\B\4\X15:Find the first match, \PB{\\{hh}}, for the current state after \PB{%
+\\{boundary}}\X${}\E{}$\6
+\&{for} ${}(\\{hash}\K\\{hash}\AND(\\{htsize}-\T{1});{}$  ; ${}\\{hash}\K(%
+\\{hash}+\T{1})\AND(\\{htsize}-\T{1})){}$\5
+${}\{{}$\1\6
+${}\\{hh}\K\\{htable}[\\{hash}];{}$\6
+\&{if} ${}((\\{hh}\XOR\\{htid})\G\\{memsize}){}$\1\5
+\X16:Insert new entry and \PB{\&{goto} \\{found}}\X;\2\6
+${}\\{hh}\K\\{trunc}(\\{hh});{}$\6
+\&{for} ${}(\|t\K\\{hh},\39\|h\K\\{trunc}(\\{head}),\39\\{tt}\K\\{trunc}(\|t+%
+\\{ss}-\T{1});{}$  ; ${}\|t\K\\{trunc}(\|t+\T{1}),\39\|h\K\\{trunc}(\|h+%
+\T{1})){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{mem}[\|t]\I\\{mem}[\|h]){}$\1\5
+\&{break};\2\6
+\&{if} ${}(\|t\E\\{tt}){}$\1\5
+\&{goto} \\{found};\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\\{found}:\par
+\U13.\fi
+
+\M{16}\B\X16:Insert new entry and \PB{\&{goto} \\{found}}\X${}\E{}$\6
+${}\{{}$\1\6
+\&{if} ${}(\PP\\{htcount}>(\\{htsize}\GG\T{1})){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ the\ hash\ tab}\)\.{le\ is\ full\
+(htsize=\%}\)\.{d,\ serial=\%d)!\\n"},\39\\{htsize},\39\\{serial});{}$\6
+${}\\{exit}({-}\T{96});{}$\6
+\4${}\}{}$\2\6
+${}\\{hh}\K\\{trunc}(\\{head});{}$\6
+${}\\{htable}[\\{hash}]\K\\{htid}+\\{hh};{}$\6
+${}\\{head}\MRL{+{\K}}\\{ss};{}$\6
+\&{goto} \\{found};\6
+\4${}\}{}$\2\par
+\U15.\fi
+
+\N{1}{17}Index.
+\fi
+
+\inx
+\fin
+\con

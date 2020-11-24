@@ -1,0 +1,13 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {The ideas behind the algorithm}{1}{11}{5}{The ideas behind the algorithm}
+\ZZ {The compression scheme}{1}{15}{9}{The compression scheme}
+\ZZ {Remembering key Ulam numbers}{1}{22}{12}{Remembering key Ulam numbers}
+\ZZ {The brute-force tests}{1}{32}{16}{The brute-force tests}
+\ZZ {Absorbing a new Ulam number}{1}{37}{18}{Absorbing a new Ulam number}
+\ZZ {The residue-based tests}{1}{48}{21}{The residue-based tests}
+\ZZ {Finishing up}{1}{51}{23}{Finishing up}
+\ZZ {The \MP \ output}{1}{56}{25}{The  output}
+\ZZ {Index}{1}{59}{27}{Index}
+
+\catcode `\@=12\relax 

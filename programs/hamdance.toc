@@ -1,0 +1,10 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {Data structures}{1}{4}{3}{Data structures}
+\ZZ {Marching forward}{1}{14}{7}{Marching forward}
+\ZZ {Backtracking}{1}{24}{13}{Backtracking}
+\ZZ {Reaping the rewards}{1}{32}{17}{Reaping the rewards}
+\ZZ {Getting started}{1}{36}{19}{Getting started}
+\ZZ {Index}{1}{40}{21}{Index}
+
+\catcode `\@=12\relax 

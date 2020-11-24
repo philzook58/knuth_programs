@@ -1,0 +1,22 @@
+\I\X9:Delete the edge from $x[j]$ to $x[j]+j$\X
+\U5.
+\I\X12:Do a union operation $u\equiv v$\X
+\U8.
+\I\X15, 18:Global variables\X
+\U3.
+\I\X11:Initialize the union/find structures\X
+\U7.
+\I\X7:Initialize to $(m-1,\ldots,2,1,0)$\X
+\U3.
+\I\X8:Insert an edge from $x[j]$ to $x[j]+j$\X
+\Us5\ET7.
+\I\X5:Move to the next $m$-tuple, or \PB{\&{goto} \\{done}}\X
+\U3.
+\I\X17:Print the stats\X
+\U3.
+\I\X4:Process the command line\X
+\U3.
+\I\X16:Study the current graph\X
+\U3.
+\I\X14:Undo the union operation $u\equiv v$\X
+\U9.

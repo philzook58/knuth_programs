@@ -1,0 +1,46 @@
+\I\X33:Bid farewell\X
+\U1.
+\I\X6:Complete the range from \PB{\|t} to \PB{\|x}\X
+\U4.
+\I\X28:Create the other base placements equivalent to \PB{\\{newbox}}\X
+\U23.
+\I\X4:Decode a bracketed specification\X
+\U3.
+\I\X5:Get ready for a range\X
+\U4.
+\I\X7, 10, 20, 21:Global variables\X
+\U1.
+\I\X26:Normalize the cells of \PB{\\{newbox}}\X
+\U23.
+\I\X31:Output the {\mc DLX} column-name line\X
+\U1.
+\I\X32:Output the {\mc DLX} rows\X
+\U1.
+\I\X17:Put the specified cells into \PB{\\{newbox}}, starting at \PB{\\{buf}[%
+\|p]}\X
+\Us16\ET23.
+\I\X23:Read a piece spec\X
+\U22.
+\I\X16:Read the box spec\X
+\U1.
+\I\X24:Read the piece name, and find it in the \PB{\\{names}} table at position
+\PB{\|k}\X
+\U23.
+\I\X22:Read the piece specs\X
+\U1.
+\I\X18:Scan an $xyz$ spec\X
+\U17.
+\I\X19:Set up the \PB{\\{occupied}} table\X
+\U16.
+\I\X30:Set \PB{\\{newbox}} to \PB{\\{base}[\|j]} transformed by \PB{\\{xyz}}
+cycling\X
+\U28.
+\I\X29:Set \PB{\\{newbox}} to \PB{\\{base}[\|j]} transformed by \PB{\\{xy}}
+rotation\X
+\U28.
+\I\X25:Store the name in \PB{\\{names}[\\{piececount}]} and check its validity\X
+\U24.
+\I\X2, 3, 11, 12, 13, 14, 27:Subroutines\X
+\U1.
+\I\X8, 9:Type definitions\X
+\U1.

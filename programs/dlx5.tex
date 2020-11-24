@@ -1,0 +1,1931 @@
+\input cwebmac
+\let\Xmod=\bmod % this is CWEB magic for using "mod" instead of "%"
+
+\datethis
+
+\N{1}{1}Intro. This program is part of a series of ``exact cover solvers'' that
+I'm putting together for my own education as I prepare to write Section
+7.2.2.1 of {\sl The Art of Computer Programming}. My intent is to
+have a variety of compatible programs on which I can run experiments,
+in order to learn how different approaches work in practice.
+
+The basic input format for all of these solvers is described at the beginning
+of program {\mc DLX1}, and you should read that description now if you are
+unfamiliar with it. You should in fact read the beginning of {\mc DLX2}, too,
+because it adds ``color controls'' to the repertoire of {\mc DLX1}.
+
+{\mc DLX5} extends {\mc DLX2} by allowing options to have nonnegative
+{\it costs}. The goal is to find a minimum-cost solution (or, more generally,
+to find the $k$ best solutions, in the sense that the sum of their
+costs is minimized).
+
+The input format is extended so that entries such as \.{{\char"7C}$n$}
+can be appended to any option, to specify its cost. If several such
+entries appear in the same option, the cost is their sum.
+
+Whenever a solution is found whose cost is less than $k$th best seen so far,
+that solution is output. For example, suppose the given problem has
+only ten solutions, whose costs happen to be (0, 0, 1, 1, 2, 2, 3, 3, 4, 4).
+We might discover them in any order, perhaps (3, 1, 4, 1, 2, 3, 2, 4, 0, 0).
+If $k=1$ (the default), we'll output solutions of cost 3, 1, 0.
+If $k=3$, we'll output solutions of cost 3, 1, 4, 1, 2, 0, 0.
+If $k=5$, we'll output solutions of cost 3, 1, 4, 1, 2, 3, 2, 0, 0.
+If $k\ge8$, we'll output all ten solutions.
+Different values of $k$ might, however, affect the order of discovery.
+
+This program internally assigns a ``tax'' to each item, and changes the cost
+of each option to its {\it net cost}, which is the original cost minus
+the taxes on each of its items. For example, the net cost of
+option `\.a~\.b~\.c~\.{{\char"7C}7}' will be not \$7 but \$1, if
+the tax on each of \.a, \.b, and \.c is \$2. This modification doesn't
+change the problem in any essential way, because the net cost of each
+solution is equal to the original cost of that solution minus the
+total tax on all items (and that total tax is constant). Taxes are assessed
+in such a way that each item belongs to at least one net-zero-cost option,
+yet all options have a nonnegative net cost. The point is that options
+whose net cost is large cannot be used in solutions whose net cost is small.
+
+If the input contains no cost specifications, the behavior of {\mc DLX5}
+will almost exactly match that of~{\mc DLX2}, except for needing
+more time and space.
+
+[{\it Historical note:\/} The simple cutoff rule in this program was
+used in one of the first computer codes for min-cost exact cover;
+see Garfinkel and Nemhauser, {\sl Operations Research\/ \bf17} (1969),
+848--856.]
+
+\fi
+
+\M{2}After this program finds its solutions, it normally prints their total
+number on \PB{\\{stderr}}, together with statistics about how many
+nodes were in the search tree, and how many ``updates'' and
+``cleansings'' were made.
+The running time in ``mems'' is also reported, together with the approximate
+number of bytes needed for data storage.
+(An ``update'' is the removal of an option from its item list.
+A ``cleansing'' is the removal of a satisfied color constraint from its option.
+One ``mem'' essentially means a memory access to a 64-bit word.
+The reported totals don't include the time or space needed to parse the
+input or to format the output.)
+
+Here is the overall structure:
+
+\Y\B\4\D$\|o$ \5
+$\\{mems}\PP{}$\C{ count one mem }\par
+\B\4\D$\\{oo}$ \5
+$\\{mems}\MRL{+{\K}}{}$\T{2}\C{ count two mems }\par
+\B\4\D$\\{ooo}$ \5
+$\\{mems}\MRL{+{\K}}{}$\T{3}\C{ count three mems }\par
+\B\4\D$\|O$ \5
+\.{"\%"}\C{ used for percent signs in format strings }\par
+\B\4\D$\Xmod$ \5
+$\MOD{}$\C{ used for percent signs denoting remainder in \CEE/ }\par
+\B\4\D$\\{max\_level}$ \5
+\T{5000}\C{ at most this many options in a solution }\par
+\B\4\D$\\{max\_cols}$ \5
+\T{100000}\C{ at most this many items }\par
+\B\4\D$\\{max\_nodes}$ \5
+\T{10000000}\C{ at most this many nonzero elements in the matrix }\par
+\B\4\D$\\{bufsize}$ \5
+$(\T{9}*\\{max\_cols}+\T{3}{}$)\C{ a buffer big enough to hold all item names }%
+\par
+\B\4\D$\\{sortbufsize}$ \5
+\T{32}\C{ for the z lookahead heuristic }\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\8\#\&{include} \.{<string.h>}\6
+\8\#\&{include} \.{<ctype.h>}\6
+\&{typedef} \&{unsigned} \&{int} \&{uint};\C{ a convenient abbreviation }\6
+\&{typedef} \&{unsigned} \&{long} \&{long} \&{ullng};\C{ ditto }\7
+\X11:Type definitions\X;\6
+\X6:Global variables\X;\6
+\X15:Subroutines\X;\7
+\\{main}(\&{int} \\{argc}${},\39{}$\&{char} ${}{*}\\{argv}[\,]){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \\{cc}${},{}$ \|i${},{}$ \|j${},{}$ \|k${},{}$ \|p${},{}$ %
+\\{pp}${},{}$ \|q${},{}$ \|r${},{}$ \|s${},{}$ \|t${},{}$ \\{cur\_node}${},{}$ %
+\\{best\_itm};\6
+\&{register} \&{ullng} \\{tmpcost}${},{}$ \\{curcost}${},{}$ \\{mincost}${},{}$
+\\{nextcost};\7
+\X7:Process the command line\X;\6
+\X3:Do the input phase\X;\6
+\X39:Solve the problem\X;\6
+\4\\{done}:\5
+\&{if} (\\{sanity\_checking})\1\5
+\\{sanity}(\,);\2\6
+\X4:Bid farewell\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{3}\B\X3:Do the input phase\X${}\E{}$\6
+\X19:Input the item names\X;\6
+\X22:Input the options\X;\6
+\X31:Assign taxes\X;\6
+\X32:Sort the item lists\X;\6
+\&{if} ${}(\\{vbose}\AND\\{show\_basics}){}$\1\5
+\X37:Report the successful completion of the input phase\X;\2\6
+\&{if} ${}(\\{vbose}\AND\\{show\_tots}){}$\1\5
+\X38:Report the item totals\X;\2\6
+${}\\{imems}\K\\{mems},\39\\{mems}\K\T{0}{}$;\par
+\U2.\fi
+
+\M{4}\B\X4:Bid farewell\X${}\E{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_tots}){}$\1\5
+\X38:Report the item totals\X;\2\6
+\&{if} ${}(\\{vbose}\AND\\{show\_profile}){}$\1\5
+\X61:Print the profile\X;\2\6
+\&{if} ${}(\\{vbose}\AND\\{show\_basics}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Altogether\ "}\|O\.{"llu\ solution"}\|O\.{"s,\
+"}\|O\.{"llu+"}\|O\.{"llu\ mems,"},\39\\{count},\39\\{count}\E\T{1}\?\.{""}:%
+\.{"s"},\39\\{imems},\39\\{mems});{}$\6
+${}\\{bytes}\K\\{last\_itm}*\&{sizeof}(\&{item})+\\{last\_node}*\&{sizeof}(%
+\&{node})+\\{maxl}*\&{sizeof}(\&{int});{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{"llu\ updates,\ "}\|O\.{"llu\
+cleansings,"},\39\\{updates},\39\\{cleansings});{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{"llu\ bytes,\ "}\|O\.{"llu\ nodes.%
+\\n"},\39\\{bytes},\39\\{nodes});{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}((\\{vbose}\AND\\{show\_opt\_costs})\W\\{count}){}$\1\5
+\X9:Print the \PB{\\{kthresh}} best costs found\X;\2\6
+\X8:Close the files\X;\par
+\U2.\fi
+
+\M{5}You can control the amount of output, as well as certain properties
+of the algorithm, by specifying options on the command line:
+\smallskip\item{$\bullet$}
+`\.v$\langle\,$integer$\,\rangle$' enables or disables various kinds of verbose
+output on \PB{\\{stderr}}, given by binary codes such as \PB{\\{show%
+\_choices}};
+\item{$\bullet$}
+`\.m$\langle\,$integer$\,\rangle$' causes every $m$th solution
+to be output (the default is \.{m0}, which merely counts them);
+\item{$\bullet$}
+`\.k$\langle\,$positive integer$\,\rangle$' causes the algorithm to cut off
+solutions that don't improve costwise on the $k$ best seen so far
+(the default is 1, and $k$ must not exceed \PB{\\{maxk}});
+\item{$\bullet$}
+`\.Z$\langle\,$string$\,\rangle$' causes a warning to be printed
+if there's an option that doesn't have exactly one primary item
+beginning with~$c$, for each character~$c$ of the string
+(thereby allowing a special heuristic to be used for cutting off false starts);
+\item{$\bullet$}
+`\.z$\langle\,$positive integer$\,\rangle$' causes a warning to be printed
+if there's an option that doesn't have exactly this many primary items
+in addition to those specified by \.Z
+(thereby allowing a special heuristic to be used for cutting off false starts);
+\item{$\bullet$}
+`\.h$\langle\,$positive integer$\,\rangle$' sets \PB{\\{lenthresh}}, a
+heuristic that
+limits the amount of lookahead when we're trying to identify the best item for
+branching (default 10);
+\item{$\bullet$}
+`\.d$\langle\,$integer$\,\rangle$' sets \PB{\\{delta}}, which causes periodic
+state reports on \PB{\\{stderr}} after the algorithm has performed
+approximately
+\PB{\\{delta}} mems since the previous report (default 10000000000);
+\item{$\bullet$}
+`\.c$\langle\,$positive integer$\,\rangle$' limits the levels on which
+choices are shown during verbose tracing;
+\item{$\bullet$}
+`\.C$\langle\,$positive integer$\,\rangle$' limits the levels on which
+choices are shown in the periodic state reports;
+\item{$\bullet$}
+`\.l$\langle\,$nonnegative integer$\,\rangle$' gives a {\it lower\/} limit,
+relative to the maximum level so far achieved, to the levels on which
+choices are shown during verbose tracing;
+\item{$\bullet$}
+`\.t$\langle\,$positive integer$\,\rangle$' causes the program to
+stop after this many solutions have been found;
+\item{$\bullet$}
+`\.T$\langle\,$integer$\,\rangle$' sets \PB{\\{timeout}} (which causes abrupt
+termination if \PB{$\\{mems}>\\{timeout}$} at the beginning of a level);
+\item{$\bullet$}
+`\.S$\langle\,$filename$\,\rangle$' to output a ``shape file'' that encodes
+the search tree.
+
+\Y\B\4\D$\\{show\_basics}$ \5
+\T{1}\C{ \PB{\\{vbose}} code for basic stats; this is the default }\par
+\B\4\D$\\{show\_choices}$ \5
+\T{2}\C{ \PB{\\{vbose}} code for backtrack logging }\par
+\B\4\D$\\{show\_details}$ \5
+\T{4}\C{ \PB{\\{vbose}} code for further commentary }\par
+\B\4\D$\\{show\_taxes}$ \5
+\T{8}\C{ \PB{\\{vbose}} code to print all nonzero item taxes }\par
+\B\4\D$\\{show\_opt\_costs}$ \5
+\T{16}\C{ \PB{\\{vbose}} code to show the best $k$ costs at end }\par
+\B\4\D$\\{show\_profile}$ \5
+\T{128}\C{ \PB{\\{vbose}} code to show the search tree profile }\par
+\B\4\D$\\{show\_full\_state}$ \5
+\T{256}\C{ \PB{\\{vbose}} code for complete state reports }\par
+\B\4\D$\\{show\_tots}$ \5
+\T{512}\C{ \PB{\\{vbose}} code for reporting item totals at start and end }\par
+\B\4\D$\\{show\_warnings}$ \5
+\T{1024}\C{ \PB{\\{vbose}} code for reporting options without primaries }\par
+\B\4\D$\\{maxk}$ \5
+\T{15000}\C{ upper limit on parameter \.k }\par
+\fi
+
+\M{6}\B\X6:Global variables\X${}\E{}$\6
+\&{int} \\{vbose}${}\K\\{show\_basics}+\\{show\_opt\_costs}+\\{show%
+\_warnings}{}$;\C{ level of verbosity }\6
+\&{int} \\{spacing};\C{ solution $t$ is output if $t$ is a multiple of \PB{%
+\\{spacing}} }\6
+\&{int} \\{show\_choices\_max}${}\K\T{1000000}{}$;\C{ above this level, \PB{%
+\\{show\_choices}} is ignored }\6
+\&{int} \\{show\_choices\_gap}${}\K\T{1000000}{}$;\C{ below level \PB{$%
+\\{maxl}-\\{show\_choices\_gap}$},     \PB{\\{show\_details}} is ignored }\6
+\&{int} \\{show\_levels\_max}${}\K\T{1000000}{}$;\C{ above this level, state
+reports stop }\6
+\&{int} \\{maxl}${}\K\T{0}{}$;\C{ maximum level actually reached }\6
+\&{char} \\{buf}[\\{bufsize}];\C{ input buffer }\6
+\&{ullng} \\{sortbuf}[\\{sortbufsize}];\C{ short buffer for sorting }\6
+\&{ullng} \\{count};\C{ solutions found so far }\6
+\&{ullng} \\{options};\C{ options seen so far }\6
+\&{ullng} \\{imems}${},{}$ \\{mems};\C{ mem counts }\6
+\&{ullng} \\{updates};\C{ update counts }\6
+\&{ullng} \\{cleansings};\C{ cleansing counts }\6
+\&{ullng} \\{bytes};\C{ memory used by main data structures }\6
+\&{ullng} \\{nodes};\C{ total number of branch nodes initiated }\6
+\&{ullng} \\{thresh}${}\K\T{10000000000}{}$;\C{ report when \PB{\\{mems}}
+exceeds this, if \PB{$\\{delta}\I\T{0}$} }\6
+\&{ullng} \\{delta}${}\K\T{10000000000}{}$;\C{ report every \PB{\\{delta}} or
+so mems }\6
+\&{ullng} \\{maxcount}${}\K\T{\^ffffffffffffffff}{}$;\C{ stop after finding
+this many solutions }\6
+\&{ullng} \\{timeout}${}\K\T{\^1fffffffffffffff}{}$;\C{ give up after this many
+mems }\6
+\&{FILE} ${}{*}\\{shape\_file}{}$;\C{ file for optional output of search tree
+shape }\6
+\&{char} ${}{*}\\{shape\_name}{}$;\C{ its name }\6
+\&{int} \\{kthresh}${}\K\T{1}{}$;\C{ this many mincost solutions will be found,
+if possible }\6
+\&{int} \\{lenthresh}${}\K\T{10}{}$;\C{ at most this many options checked per
+item }\6
+\&{int} \\{zgiven};\C{ this many primary items per option, if specified }\6
+\&{char} \\{Zchars}[\T{8}];\C{ prefix characters specified by parameter \.Z }\6
+\&{int} \\{ppgiven};\C{ desired footprint of primary items in every option }\par
+\As13\ET41.
+\U2.\fi
+
+\M{7}If an option appears more than once on the command line, the first
+appearance takes precedence.
+
+\Y\B\4\X7:Process the command line\X${}\E{}$\6
+\&{for} ${}(\|j\K\\{argc}-\T{1},\39\|k\K\T{0};{}$ \|j; ${}\|j\MM){}$\1\6
+\&{switch} (\\{argv}[\|j][\T{0}])\5
+${}\{{}$\1\6
+\4\&{case} \.{'v'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{vbose})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'m'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{spacing})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'k'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{kthresh})-\T{1});{}$\6
+\&{if} ${}(\\{kthresh}<\T{1}\V\\{kthresh}>\\{maxk}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ parameter\ k\ }\)\.{must\ be\ between\
+1\ an}\)\.{d\ "}\|O\.{"d!\\n"},\39\\{maxk});{}$\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\6
+\&{break};\6
+\4\&{case} \.{'Z'}:\6
+\&{if} ${}(\\{strlen}(\\{argv}[\|j])>\T{8}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ parameter\ Z\ }\)\.{must\ specify\ at\
+most}\)\.{\ 7\ prefix\ characters}\)\.{!\\n"});{}$\6
+${}\|k\MRL{{\OR}{\K}}\T{1};{}$\6
+\4${}\}{}$\5
+\2\&{else}\1\5
+${}\\{sprintf}(\\{Zchars},\39\.{"\%s"},\39\\{argv}[\|j]+\T{1});{}$\2\6
+\&{break};\6
+\4\&{case} \.{'z'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{zgiven})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'h'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{lenthresh})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'d'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"lld"},\39{%
+\AND}\\{delta})-\T{1}),\39\\{thresh}\K\\{delta}{}$;\5
+\&{break};\6
+\4\&{case} \.{'c'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{show\_choices\_max})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'C'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{show\_levels\_max})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'l'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"d"},\39{%
+\AND}\\{show\_choices\_gap})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'t'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"lld"},\39{%
+\AND}\\{maxcount})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'T'}:\5
+${}\|k\MRL{{\OR}{\K}}(\\{sscanf}(\\{argv}[\|j]+\T{1},\39\.{""}\|O\.{"lld"},\39{%
+\AND}\\{timeout})-\T{1}){}$;\5
+\&{break};\6
+\4\&{case} \.{'S'}:\5
+${}\\{shape\_name}\K\\{argv}[\|j]+\T{1},\39\\{shape\_file}\K\\{fopen}(\\{shape%
+\_name},\39\.{"w"});{}$\6
+\&{if} ${}(\R\\{shape\_file}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Sorry,\ I\ can't\ open}\)\.{\ file\ `"}\|O%
+\.{"s'\ for\ writing!\\n"},\39\\{shape\_name});{}$\2\6
+\&{break};\6
+\4\&{default}:\5
+${}\|k\K\T{1}{}$;\C{ unrecognized command-line option }\6
+\4${}\}{}$\2\2\6
+\&{if} (\|k)\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Usage:\ "}\|O\.{"s\ [v<n>]\ [m<n>]\ [k<}\)%
+\.{n>]\ [Z<ABC>]\ [z<n>]\ }\)\.{[h<n>]"}\.{"\ [d<n>]\ [c<n>]\ [C<n}\)\.{>]\
+[l<n>]\ [t<n>]\ [T<}\)\.{n>]\ [S<bar>]\ <\ foo.d}\)\.{lx\\n"},\39\\{argv}[%
+\T{0}]);{}$\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\par
+\U2.\fi
+
+\M{8}\B\X8:Close the files\X${}\E{}$\6
+\&{if} (\\{shape\_file})\1\5
+\\{fclose}(\\{shape\_file});\2\par
+\U4.\fi
+
+\M{9}\B\X9:Print the \PB{\\{kthresh}} best costs found\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"The\ optimum\ cost"}\|O\.{"s"},\39\\{kthresh}%
+\E\T{1}\?\.{"\ is"}:\.{"s\ are:\\n"});{}$\6
+\X57:Sort the \PB{\\{bestcost}} heap in preparation for final printing\X;\6
+\&{for} ${}(\|k\K\T{1},\39\\{tmpcost}\K\\{infcost};{}$ ${}\|k\Z\\{kthresh}\W%
+\\{bestcost}[\|k]<\\{infcost};{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{tmpcost}\E\\{totaltax}+\\{bestcost}[\|k]){}$\1\5
+${}\|r\PP;{}$\2\6
+\&{else}\5
+${}\{{}$\1\6
+\X10:Print a line (except the first time)\X;\6
+${}\\{tmpcost}\K\\{totaltax}+\\{bestcost}[\|k],\39\|r\K\T{0};{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\X10:Print a line (except the first time)\X;\6
+\4${}\}{}$\2\par
+\U4.\fi
+
+\M{10}\B\X10:Print a line (except the first time)\X${}\E{}$\6
+\&{if} ${}(\\{tmpcost}\I\\{infcost}){}$\5
+${}\{{}$\1\6
+\&{if} (\|r)\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ \$"}\|O\.{"llu\ (repeated\ "}\|O\.{"d\
+times)\\n"},\39\\{tmpcost},\39\|r+\T{1});{}$\2\6
+\&{else}\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ \$"}\|O\.{"llu\\n"},\39\\{tmpcost});{}$\2\6
+\4${}\}{}$\2\par
+\U9.\fi
+
+\N{1}{11}Data structures.
+Each item of the input matrix is represented by an \&{item} struct,
+and each option is represented as a list of \&{node} structs. There's one
+node for each nonzero entry in the matrix.
+
+More precisely, the nodes of individual options appear sequentially,
+with ``spacer'' nodes between them. The nodes are also
+linked circularly with respect to each item, in doubly linked lists.
+The item lists each include a header node, but the option lists do not.
+Item header nodes are aligned with an \&{item} struct, which
+contains further info about the item.
+
+Each node contains five important fields, and one other that's unused but
+might be important in extensions of this program. Two are the pointers \PB{%
+\\{up}}
+and \PB{\\{down}} of doubly linked lists, already mentioned.
+A~third points directly to the item containing the node.
+A~fourth specifies a color, or zero if no color is specified.
+A~fifth specifies the cost of the option in which this node occurs.
+A~sixth points to the spacer at the end of the option;
+that one is currently set, but not looked at.
+
+A ``pointer'' is an array index, not a \CEE/ reference (because the latter
+would occupy 64~bits and waste cache space). The \PB{\\{cl}} array is for
+\&{item} structs, and the \PB{\\{nd}} array is for \&{node}s. I assume that
+both of
+those arrays are small enough to be allocated statically. (Modifications
+of this program could do dynamic allocation if needed.)
+The header node corresponding to \PB{\\{cl}[\|c]} is \PB{\\{nd}[\|c]}.
+
+Notice that each \&{node} occupies three octabytes.
+We count one mem for a simultaneous access to the \PB{\\{up}} and \PB{\\{down}}
+fields,
+or for a simultaneous access to the \PB{\\{itm}} and \PB{\\{color}} fields.
+
+Although the item-list pointers are called \PB{\\{up}} and \PB{\\{down}}, they
+need not
+correspond to actual positions of matrix entries. The elements of
+each item list can appear in any order, so that one option
+needn't be consistently ``above'' or ``below'' another. Indeed, we
+will sort each option list of a primary item from top to bottom in
+order of nondecreasing cost.
+
+This program doesn't change the \PB{\\{itm}} fields after they've first been
+set up.
+But the \PB{\\{up}} and \PB{\\{down}} fields will be changed frequently,
+although preserving
+relative order.
+
+Exception: In the node \PB{\\{nd}[\|c]} that is the header for the list of
+item~\PB{\|c}, we use the \PB{\\{cost}} field to hold the ``tax'' on that
+item---for
+diagnostic purposes only, not as part of the algorithm's decision-making.
+We also might use its \PB{\\{color}} field for special purposes.
+The alternative names \PB{\\{len}} for \PB{\\{itm}}, \PB{\\{aux}} for \PB{%
+\\{color}}, and \PB{\\{tax}} for \PB{\\{cost}}
+are used in the code so that this nonstandard semantics will be more clear.
+
+A {\it spacer\/} node has \PB{$\\{itm}\Z\T{0}$}. Its \PB{\\{up}} field points
+to the start
+of the preceding option; its \PB{\\{down}} field points to the end of the
+following option.
+Thus it's easy to traverse an option circularly, in either direction.
+
+The \PB{\\{color}} field of a node is set to \PB{${-}\T{1}$} when that node has
+been cleansed.
+In such cases its original color appears in the item header.
+(The program uses this fact only for diagnostic outputs.)
+
+\Y\B\4\D$\\{len}$ \5
+\\{itm}\C{ item list length (used in header nodes only) }\par
+\B\4\D$\\{aux}$ \5
+\\{color}\C{ an auxiliary quantity (used in header nodes only) }\par
+\B\4\D$\\{tax}$ \5
+\\{cost}\C{ item tax (used in header nodes only) }\par
+\Y\B\4\X11:Type definitions\X${}\E{}$\6
+\&{typedef} \&{struct} \&{node\_struct} ${}\{{}$\1\6
+\&{int} \\{up}${},{}$ \\{down};\C{ predecessor and successor in item list }\6
+\&{int} \\{itm};\C{ the item containing this node }\6
+\&{int} \\{color};\C{ the color specified by this node, if any }\6
+\&{ullng} \\{cost};\C{ the cost of the option containing this node }\2\6
+${}\}{}$ \&{node};\par
+\A12.
+\U2.\fi
+
+\M{12}Each \&{item} struct contains three fields:
+The \PB{\\{name}} is the user-specified identifier;
+\PB{\\{next}} and \PB{\\{prev}} point to adjacent items, when this
+item is part of a doubly linked list.
+
+As backtracking proceeds, nodes
+will be deleted from item lists when their option has been hidden by
+other options in the partial solution.
+But when backtracking is complete, the data structures will be
+restored to their original state.
+
+We count one mem for a simultaneous access to the \PB{\\{prev}} and \PB{%
+\\{next}} fields.
+
+\Y\B\4\X11:Type definitions\X${}\mathrel+\E{}$\6
+\&{typedef} \&{struct} \&{itm\_struct} ${}\{{}$\1\6
+\&{char} \\{name}[\T{8}];\C{ symbolic identification of the item, for printing
+}\6
+\&{int} \\{prev}${},{}$ \\{next};\C{ neighbors of this item }\2\6
+${}\}{}$ \&{item};\par
+\fi
+
+\M{13}\B\X6:Global variables\X${}\mathrel+\E{}$\6
+\&{node} ${}{*}\\{nd}{}$;\C{ the master list of nodes }\6
+\&{int} \\{last\_node};\C{ the first node in \PB{\\{nd}} that's not yet used }\6
+\&{item} ${}\\{cl}[\\{max\_cols}+\T{2}]{}$;\C{ the master list of items }\6
+\&{int} \\{second}${}\K\\{max\_cols}{}$;\C{ boundary between primary and
+secondary items }\6
+\&{int} \\{last\_itm};\C{ the first item in \PB{\\{cl}} that's not yet used }\6
+\&{ullng} \\{totaltax};\C{ the sum of all taxes assessed }\par
+\fi
+
+\M{14}One \PB{\&{item}} struct is called the root. It serves as the head of the
+list of items that need to be covered, and is identifiable by the fact
+that its \PB{\\{name}} is empty.
+
+\Y\B\4\D$\\{root}$ \5
+\T{0}\C{ \PB{\\{cl}[\\{root}]} is the gateway to the unsettled items }\par
+\fi
+
+\M{15}An option is identified not by name but by the names of the items it
+contains.
+Here is a routine that prints an option, given a pointer to any of its
+nodes. It also prints the position of the option in its item list,
+given a cost threshold to measure the length of that list.
+
+\Y\B\4\X15:Subroutines\X${}\E{}$\6
+\&{void} \\{print\_option}(\&{int} \|p${},\39{}$\&{FILE} ${}{*}\\{stream},%
+\39{}$\&{ullng} \\{thresh})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|c${},{}$ \|j${},{}$ \|k${},{}$ \|q;\6
+\&{register} \&{ullng} \|s;\7
+${}\|c\K\\{nd}[\|p].\\{itm};{}$\6
+\&{if} ${}(\|p<\\{last\_itm}\V\|p\G\\{last\_node}\V\|c\Z\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Illegal\ option\ "}\|O\.{"d!\\n"},\39\|p);{}$\6
+\&{return};\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|q\K\|p,\39\|s\K\T{0};{}$  ; \,)\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stream},\39\.{"\ "}\|O\.{".8s"},\39\\{cl}[\\{nd}[\|q].%
+\\{itm}].\\{name});{}$\6
+\&{if} ${}(\\{nd}[\|q].\\{color}){}$\1\5
+${}\\{fprintf}(\\{stream},\39\.{":"}\|O\.{"c"},\39\\{nd}[\|q].\\{color}>\T{0}\?%
+\\{nd}[\|q].\\{color}:\\{nd}[\\{nd}[\|q].\\{itm}].\\{color});{}$\2\6
+${}\|s\MRL{+{\K}}\\{nd}[\\{nd}[\|q].\\{itm}].\\{tax};{}$\6
+${}\|q\PP;{}$\6
+\&{if} ${}(\\{nd}[\|q].\\{itm}\Z\T{0}){}$\1\5
+${}\|q\K\\{nd}[\|q].\\{up}{}$;\C{ \PB{${-}\\{nd}[\|q].\\{itm}$} is actually the
+option number }\2\6
+\&{if} ${}(\|q\E\|p){}$\1\5
+\&{break};\2\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|q\K\\{nd}[\|c].\\{down},\39\|k\K\T{1};{}$ ${}\|q\I\|p;{}$ ${}\|k%
+\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|q\E\|c){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stream},\39\.{"\ (?)"}){}$;\5
+\&{goto} \\{finish};\C{ option not in its item list! }\6
+\4${}\}{}$\5
+\2\&{else}\1\5
+${}\|q\K\\{nd}[\|q].\\{down};{}$\2\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|q\K\\{nd}[\|c].\\{down},\39\|j\K\T{0};{}$ ${}\|q\G\\{last%
+\_itm};{}$ ${}\|q\K\\{nd}[\|q].\\{down},\39\|j\PP){}$\1\6
+\&{if} ${}(\\{nd}[\|q].\\{cost}\G\\{thresh}){}$\1\5
+\&{break};\2\2\6
+${}\\{fprintf}(\\{stream},\39\.{"\ ("}\|O\.{"d\ of\ "}\|O\.{"d)"},\39\|k,\39%
+\|j);{}$\6
+\4\\{finish}:\5
+\&{if} ${}(\|s+\\{nd}[\|p].\\{cost}){}$\1\5
+${}\\{fprintf}(\\{stream},\39\.{"\ \$"}\|O\.{"llu\ ["}\|O\.{"llu]\\n"},\39\|s+%
+\\{nd}[\|p].\\{cost},\39\\{nd}[\|p].\\{cost});{}$\2\6
+\&{else}\1\5
+${}\\{fprintf}(\\{stream},\39\.{"\\n"});{}$\2\6
+\4${}\}{}$\2\7
+\&{void} \\{prow}(\&{int} \|p)\1\1\2\2\6
+${}\{{}$\1\6
+${}\\{print\_option}(\|p,\39\\{stderr},\39\\{infcost});{}$\6
+\4${}\}{}$\2\par
+\As16, 17, 43, 44, 47, 48, 59, 60\ETs62.
+\U2.\fi
+
+\M{16}When I'm debugging, I might want to look at one of the current item
+lists.
+
+\Y\B\4\X15:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{print\_itm}(\&{int} \|c)\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|p;\7
+\&{if} ${}(\|c<\\{root}\V\|c\G\\{last\_itm}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Illegal\ item\ "}\|O\.{"d!\\n"},\39\|c);{}$\6
+\&{return};\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|c<\\{second}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Item\ "}\|O\.{".8s,\ neighbors\ "}\|O\.{".8s\
+and\ "}\|O\.{".8s:\\n"},\39\\{cl}[\|c].\\{name},\39\\{cl}[\\{cl}[\|c].%
+\\{prev}].\\{name},\39\\{cl}[\\{cl}[\|c].\\{next}].\\{name});{}$\2\6
+\&{else}\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Item\ "}\|O\.{".8s:\\n"},\39\\{cl}[\|c].%
+\\{name});{}$\2\6
+\&{for} ${}(\|p\K\\{nd}[\|c].\\{down};{}$ ${}\|p\G\\{last\_itm};{}$ ${}\|p\K%
+\\{nd}[\|p].\\{down}){}$\1\5
+\\{prow}(\|p);\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{17}Speaking of debugging, here's a routine to check if redundant parts of
+our
+data structure have gone awry.
+
+\Y\B\4\D$\\{sanity\_checking}$ \5
+\T{0}\C{ set this to 1 if you suspect a bug }\par
+\Y\B\4\X15:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{sanity}(\&{void})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|k${},{}$ \|p${},{}$ \|q${},{}$ \\{pp}${},{}$ %
+\\{qq}${},{}$ \|t;\7
+\&{for} ${}(\|q\K\\{root},\39\|p\K\\{cl}[\|q].\\{next};{}$  ; ${}\|q\K\|p,\39%
+\|p\K\\{cl}[\|p].\\{next}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{cl}[\|p].\\{prev}\I\|q){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Bad\ prev\ field\ at\ i}\)\.{tm\ "}\|O\.{".8s!%
+\\n"},\39\\{cl}[\|p].\\{name});{}$\2\6
+\&{if} ${}(\|p\E\\{root}){}$\1\5
+\&{break};\2\6
+\X18:Check item \PB{\|p}\X;\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{18}\B\X18:Check item \PB{\|p}\X${}\E{}$\6
+\&{for} ${}(\\{qq}\K\|p,\39\\{pp}\K\\{nd}[\\{qq}].\\{down},\39\|k\K\T{0};{}$  ;
+${}\\{qq}\K\\{pp},\39\\{pp}\K\\{nd}[\\{pp}].\\{down},\39\|k\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{nd}[\\{pp}].\\{up}\I\\{qq}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Bad\ up\ field\ at\ nod}\)\.{e\ "}\|O\.{"d!%
+\\n"},\39\\{pp});{}$\2\6
+\&{if} ${}(\\{pp}\E\|p){}$\1\5
+\&{break};\2\6
+\&{if} ${}(\\{nd}[\\{pp}].\\{itm}\I\|p){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Bad\ itm\ field\ at\ no}\)\.{de\ "}\|O\.{"d!%
+\\n"},\39\\{pp});{}$\2\6
+\&{if} ${}(\\{qq}>\|p\W\\{nd}[\\{pp}].\\{cost}<\\{nd}[\\{qq}].\\{cost}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Costs\ out\ of\ order\ }\)\.{at\ node\ "}\|O%
+\.{"d!\\n"},\39\\{pp});{}$\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|p<\\{second}\W\\{nd}[\|p].\\{len}\I\|k){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Bad\ len\ field\ in\ it}\)\.{em\ "}\|O\.{".8s!%
+\\n"},\39\\{cl}[\|p].\\{name}){}$;\2\par
+\U17.\fi
+
+\N{1}{19}Inputting the matrix. Brute force is the rule in this part of the
+code,
+whose goal is to parse and store the input data and to check its validity.
+
+\Y\B\4\D$\\{panic}(\|m)$ \6
+${}\{{}$\5
+\1${}\\{fprintf}(\\{stderr},\39\.{""}\|O\.{"s!\\n"}\|O\.{"d:\ "}\|O\.{".99s%
+\\n"},\39\|m,\39\|p,\39\\{buf}){}$;\5
+${}\\{exit}({-}\T{666}){}$;\5
+${}\}{}$\2\par
+\Y\B\4\X19:Input the item names\X${}\E{}$\6
+$\\{nd}\K{}$(\&{node} ${}{*}){}$ \\{calloc}${}(\\{max\_nodes},\39\&{sizeof}(%
+\&{node}));{}$\6
+\&{if} ${}(\R\\{nd}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"I\ couldn't\ allocate}\)\.{\ space\ for\ "}\|O%
+\.{"d\ nodes!\\n"},\39\\{max\_nodes});{}$\6
+${}\\{exit}({-}\T{666});{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{max\_nodes}\Z\T{2}*\\{max\_cols}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Recompile\ me:\ max\_n}\)\.{odes\ must\ exceed%
+\ twi}\)\.{ce\ max\_cols!\\n"});{}$\6
+${}\\{exit}({-}\T{999});{}$\6
+\4${}\}{}$\C{ every item will want a header node and at least one other node }%
+\2\6
+\&{while} (\T{1})\5
+${}\{{}$\1\6
+\&{if} ${}(\R\\{fgets}(\\{buf},\39\\{bufsize},\39\\{stdin})){}$\1\5
+\&{break};\2\6
+\&{if} ${}(\|o,\39\\{buf}[\|p\K\\{strlen}(\\{buf})-\T{1}]\I\.{'\\n'}){}$\1\5
+\\{panic}(\.{"Input\ line\ way\ too\ }\)\.{long"});\2\6
+\&{for} ${}(\|p\K\T{0};{}$ \|o${},\39\\{isspace}(\\{buf}[\|p]);{}$ ${}\|p%
+\PP){}$\1\5
+;\2\6
+\&{if} ${}(\\{buf}[\|p]\E\.{'|'}\V\R\\{buf}[\|p]){}$\1\5
+\&{continue};\C{ bypass comment or blank line }\2\6
+${}\\{last\_itm}\K\T{1};{}$\6
+\&{break};\6
+\4${}\}{}$\2\6
+\&{if} ${}(\R\\{last\_itm}){}$\1\5
+\\{panic}(\.{"No\ items"});\2\6
+\&{for} ( ; \|o${},\39\\{buf}[\|p];{}$ \,)\5
+${}\{{}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\T{8}\W(\|o,\39\R\\{isspace}(\\{buf}[\|p+%
+\|j]));{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{buf}[\|p+\|j]\E\.{':'}\V\\{buf}[\|p+\|j]\E\.{'|'}){}$\1\5
+\\{panic}(\.{"Illegal\ character\ i}\)\.{n\ item\ name"});\2\6
+${}\|o,\39\\{cl}[\\{last\_itm}].\\{name}[\|j]\K\\{buf}[\|p+\|j];{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|j\E\T{8}\W\R\\{isspace}(\\{buf}[\|p+\|j])){}$\1\5
+\\{panic}(\.{"Item\ name\ too\ long"});\2\6
+\X20:Check for duplicate item name\X;\6
+\X21:Initialize \PB{\\{last\_itm}} to a new item with an empty list\X;\6
+\&{for} ${}(\|p\MRL{+{\K}}\|j+\T{1};{}$ \|o${},\39\\{isspace}(\\{buf}[\|p]);{}$
+${}\|p\PP){}$\1\5
+;\2\6
+\&{if} ${}(\\{buf}[\|p]\E\.{'|'}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{second}\I\\{max\_cols}){}$\1\5
+\\{panic}(\.{"Item\ name\ line\ cont}\)\.{ains\ |\ twice"});\2\6
+${}\\{second}\K\\{last\_itm};{}$\6
+\&{for} ${}(\|p\PP;{}$ \|o${},\39\\{isspace}(\\{buf}[\|p]);{}$ ${}\|p\PP){}$\1\5
+;\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{second}\E\\{max\_cols}){}$\1\5
+${}\\{second}\K\\{last\_itm};{}$\2\6
+${}\\{oo},\39\\{cl}[\\{last\_itm}].\\{prev}\K\\{last\_itm}-\T{1},\39\\{cl}[%
+\\{last\_itm}-\T{1}].\\{next}\K\\{last\_itm};{}$\6
+${}\\{oo},\39\\{cl}[\\{second}].\\{prev}\K\\{last\_itm},\39\\{cl}[\\{last%
+\_itm}].\\{next}\K\\{second}{}$;\C{ this sequence works properly whether or not
+\PB{$\\{second}\K\\{last\_itm}$} }\6
+${}\\{oo},\39\\{cl}[\\{root}].\\{prev}\K\\{second}-\T{1},\39\\{cl}[\\{second}-%
+\T{1}].\\{next}\K\\{root};{}$\6
+${}\\{last\_node}\K\\{last\_itm}{}$;\C{ reserve all the header nodes and the
+first spacer }\C{ we have \PB{$\\{nd}[\\{last\_node}].\\{itm}\K\T{0}$} in the
+first spacer }\par
+\U3.\fi
+
+\M{20}\B\X20:Check for duplicate item name\X${}\E{}$\6
+\&{for} ${}(\|k\K\T{1};{}$ \|o${},\39\\{strncmp}(\\{cl}[\|k].\\{name},\39%
+\\{cl}[\\{last\_itm}].\\{name},\39\T{8});{}$ ${}\|k\PP){}$\1\5
+;\2\6
+\&{if} ${}(\|k<\\{last\_itm}){}$\1\5
+\\{panic}(\.{"Duplicate\ item\ name}\)\.{"});\2\par
+\U19.\fi
+
+\M{21}\B\X21:Initialize \PB{\\{last\_itm}} to a new item with an empty list%
+\X${}\E{}$\6
+\&{if} ${}(\\{last\_itm}>\\{max\_cols}){}$\1\5
+\\{panic}(\.{"Too\ many\ items"});\2\6
+${}\\{oo},\39\\{cl}[\\{last\_itm}-\T{1}].\\{next}\K\\{last\_itm},\39\\{cl}[%
+\\{last\_itm}].\\{prev}\K\\{last\_itm}-\T{1}{}$;\C{ \PB{$\\{nd}[\\{last\_itm}].%
+\\{len}\K\T{0}$} }\6
+${}\|o,\39\\{nd}[\\{last\_itm}].\\{up}\K\\{nd}[\\{last\_itm}].\\{down}\K\\{last%
+\_itm};{}$\6
+${}\\{last\_itm}\PP{}$;\par
+\U19.\fi
+
+\M{22}I'm putting the option number into the spacer that follows it, as a
+possible debugging aid. But the program doesn't currently use that information.
+
+\Y\B\4\X22:Input the options\X${}\E{}$\6
+\X28:Set \PB{\\{ppgiven}} from parameters \.Z and \.z\X;\6
+\&{while} (\T{1})\5
+${}\{{}$\1\6
+\&{if} ${}(\R\\{fgets}(\\{buf},\39\\{bufsize},\39\\{stdin})){}$\1\5
+\&{break};\2\6
+\&{if} ${}(\|o,\39\\{buf}[\|p\K\\{strlen}(\\{buf})-\T{1}]\I\.{'\\n'}){}$\1\5
+\\{panic}(\.{"Option\ line\ too\ lon}\)\.{g"});\2\6
+\&{for} ${}(\|p\K\T{0};{}$ \|o${},\39\\{isspace}(\\{buf}[\|p]);{}$ ${}\|p%
+\PP){}$\1\5
+;\2\6
+\&{if} ${}(\\{buf}[\|p]\E\.{'|'}\V\R\\{buf}[\|p]){}$\1\5
+\&{continue};\C{ bypass comment or blank line }\2\6
+${}\|i\K\\{last\_node}{}$;\C{ remember the spacer at the left of this option }\6
+${}\\{tmpcost}\K\T{0};{}$\6
+\&{for} ${}(\\{pp}\K\T{0};{}$ \\{buf}[\|p]; \,)\5
+${}\{{}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\T{8}\W(\|o,\39\R\\{isspace}(\\{buf}[\|p+%
+\|j]))\W\\{buf}[\|p+\|j]\I\.{':'};{}$ ${}\|j\PP){}$\1\5
+${}\|o,\39\\{cl}[\\{last\_itm}].\\{name}[\|j]\K\\{buf}[\|p+\|j];{}$\2\6
+\&{if} ${}(\R\|j){}$\1\5
+\\{panic}(\.{"Empty\ item\ name"});\2\6
+\&{if} ${}(\|j\E\T{8}\W\R\\{isspace}(\\{buf}[\|p+\|j])\W\\{buf}[\|p+\|j]\I%
+\.{':'}){}$\1\5
+\\{panic}(\.{"Item\ name\ too\ long"});\2\6
+\&{if} ${}(\|j<\T{8}){}$\1\5
+${}\|o,\39\\{cl}[\\{last\_itm}].\\{name}[\|j]\K\.{'\\0'};{}$\2\6
+\X25:Create a node for the item named in \PB{\\{buf}[\|p]}\X;\6
+\&{if} ${}(\\{buf}[\|p+\|j]\I\.{':'}){}$\1\5
+${}\|o,\39\\{nd}[\\{last\_node}].\\{color}\K\T{0};{}$\2\6
+\&{else} \&{if} ${}(\|k\G\\{second}){}$\5
+${}\{{}$\1\6
+\&{if} ${}((\|o,\39\\{isspace}(\\{buf}[\|p+\|j+\T{1}]))\V(\|o,\39\R\\{isspace}(%
+\\{buf}[\|p+\|j+\T{2}]))){}$\1\5
+\\{panic}(\.{"Color\ must\ be\ a\ sin}\)\.{gle\ character"});\2\6
+${}\|o,\39\\{nd}[\\{last\_node}].\\{color}\K\\{buf}[\|p+\|j+\T{1}];{}$\6
+${}\|p\MRL{+{\K}}\T{2};{}$\6
+\4${}\}{}$\5
+\2\&{else}\1\5
+\\{panic}(\.{"Primary\ item\ must\ b}\)\.{e\ uncolored"});\2\6
+\X23:Skip to next item, accruing cost information if any\X;\6
+\4${}\}{}$\2\6
+\&{if} ${}(\R\\{pp}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{vbose}\AND\\{show\_warnings}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Option\ ignored\ (no\ }\)\.{primary\ items):\
+"}\|O\.{"s"},\39\\{buf});{}$\2\6
+\&{while} ${}(\\{last\_node}>\|i){}$\5
+${}\{{}$\1\6
+\X27:Remove \PB{\\{last\_node}} from its item list\X;\6
+${}\\{last\_node}\MM;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\5
+\2\&{else}\5
+${}\{{}$\1\6
+\X29:Check for consistency with parameters \.Z and \.z\X;\6
+\X24:Insert the cost into each item of this option\X;\6
+${}\|o,\39\\{nd}[\|i].\\{down}\K\\{last\_node};{}$\6
+${}\\{last\_node}\PP{}$;\C{ create the next spacer }\6
+\&{if} ${}(\\{last\_node}\E\\{max\_nodes}){}$\1\5
+\\{panic}(\.{"Too\ many\ nodes"});\2\6
+${}\\{options}\PP;{}$\6
+${}\|o,\39\\{nd}[\\{last\_node}].\\{up}\K\|i+\T{1};{}$\6
+${}\|o,\39\\{nd}[\\{last\_node}].\\{itm}\K{-}\\{options};{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U3.\fi
+
+\M{23}\B\X23:Skip to next item, accruing cost information if any\X${}\E{}$\6
+\&{while} (\T{1})\5
+${}\{{}$\1\6
+\&{register} \&{ullng} \|d;\7
+\&{for} ${}(\|p\MRL{+{\K}}\|j+\T{1};{}$ \|o${},\39\\{isspace}(\\{buf}[\|p]);{}$
+${}\|p\PP){}$\1\5
+;\2\6
+\&{if} ${}(\\{buf}[\|p]\I\.{'|'}){}$\1\5
+\&{break};\2\6
+\&{if} ${}(\\{buf}[\|p+\T{1}]<\.{'0'}\V\\{buf}[\|p+\T{1}]>\.{'9'}){}$\1\5
+\\{panic}(\.{"Option\ cost\ should\ }\)\.{be\ a\ decimal\ number"});\2\6
+\&{for} ${}(\|j\K\T{1},\39\|d\K\T{0};{}$ \|o${},\39\R\\{isspace}(\\{buf}[\|p+%
+\|j]);{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{buf}[\|p+\|j]<\.{'0'}\V\\{buf}[\|p+\|j]>\.{'9'}){}$\1\5
+\\{panic}(\.{"Illegal\ digit\ in\ op}\)\.{tion\ cost"});\2\6
+${}\|d\K\T{10}*\|d+\\{buf}[\|p+\|j]-\.{'0'};{}$\6
+\4${}\}{}$\2\6
+${}\\{tmpcost}\MRL{+{\K}}\|d;{}$\6
+\4${}\}{}$\2\par
+\U22.\fi
+
+\M{24}\B\X24:Insert the cost into each item of this option\X${}\E{}$\6
+\&{for} ${}(\|j\K\|i+\T{1};{}$ ${}\|j\Z\\{last\_node};{}$ ${}\|j\PP){}$\1\5
+${}\|o,\39\\{nd}[\|j].\\{cost}\K\\{tmpcost}{}$;\2\par
+\U22.\fi
+
+\M{25}\B\X25:Create a node for the item named in \PB{\\{buf}[\|p]}\X${}\E{}$\6
+\&{for} ${}(\|k\K\T{0};{}$ \|o${},\39\\{strncmp}(\\{cl}[\|k].\\{name},\39%
+\\{cl}[\\{last\_itm}].\\{name},\39\T{8});{}$ ${}\|k\PP){}$\1\5
+;\2\6
+\&{if} ${}(\|k\E\\{last\_itm}){}$\1\5
+\\{panic}(\.{"Unknown\ item\ name"});\2\6
+\&{if} ${}(\|o,\39\\{nd}[\|k].\\{aux}\G\|i){}$\1\5
+\\{panic}(\.{"Duplicate\ item\ name}\)\.{\ in\ this\ option"});\2\6
+${}\\{last\_node}\PP;{}$\6
+\&{if} ${}(\\{last\_node}\E\\{max\_nodes}){}$\1\5
+\\{panic}(\.{"Too\ many\ nodes"});\2\6
+${}\|o,\39\\{nd}[\\{last\_node}].\\{itm}\K\|k;{}$\6
+\&{if} ${}(\|k<\\{second}){}$\1\5
+\X30:Adjust \PB{\\{pp}} for parameters \.Z and \.z\X;\2\6
+${}\|o,\39\|t\K\\{nd}[\|k].\\{len}+\T{1};{}$\6
+\X26:Insert node \PB{\\{last\_node}} into the list for item \PB{\|k}\X;\par
+\U22.\fi
+
+\M{26}Insertion of a new node is simple. Before taxes have been computed,
+we set only the \PB{\\{up}} links of each item list.
+
+We store the position of the new node into \PB{$\\{nd}[\|k].\\{aux}$}, so that
+the test for duplicate items above will be correct.
+
+\Y\B\4\X26:Insert node \PB{\\{last\_node}} into the list for item \PB{\|k}\X${}%
+\E{}$\6
+$\|o,\39\\{nd}[\|k].\\{len}\K\|t{}$;\C{ store the new length of the list }\6
+${}\\{nd}[\|k].\\{aux}\K\\{last\_node}{}$;\C{ no mem charge for \PB{\\{aux}}
+after \PB{\\{len}} }\6
+${}\|o,\39\|r\K\\{nd}[\|k].\\{up}{}$;\C{ the ``bottom'' node of the item list }%
+\6
+${}\\{oo},\39\\{nd}[\|k].\\{up}\K\\{last\_node},\39\\{nd}[\\{last\_node}].%
+\\{up}\K\|r{}$;\par
+\U25.\fi
+
+\M{27}\B\X27:Remove \PB{\\{last\_node}} from its item list\X${}\E{}$\6
+$\|o,\39\|k\K\\{nd}[\\{last\_node}].\\{itm};{}$\6
+${}\\{oo},\39\\{nd}[\|k].\\{len}\MM,\39\\{nd}[\|k].\\{aux}\K\|i-\T{1};{}$\6
+${}\\{oo},\39\\{nd}[\|k].\\{up}\K\\{nd}[\\{last\_node}].\\{up}{}$;\par
+\U22.\fi
+
+\M{28}When the user has used the \.Z parameter to specify special prefix
+characters, we want to check that each option conforms to that specification.
+
+The rightmost bits of variable \PB{\\{pp}} will indicate which prefixes have
+been seen
+so far. The other bits of \PB{\\{pp}} will count active items that don't have
+a \.Z-specified prefix.
+
+\Y\B\4\X28:Set \PB{\\{ppgiven}} from parameters \.Z and \.z\X${}\E{}$\6
+\&{if} ${}(\|o,\39\\{Zchars}[\T{0}]){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|r\K\T{1};{}$ \\{Zchars}[\|r]; ${}\|r\PP){}$\1\5
+;\2\6
+${}\\{ppgiven}\K(\T{1}\LL\|r)-\T{1}+(\\{zgiven}\LL\T{8});{}$\6
+\4${}\}{}$\5
+\2\&{else}\1\5
+${}\\{ppgiven}\K\\{zgiven}\LL\T{8}{}$;\2\par
+\U22.\fi
+
+\M{29}\B\X29:Check for consistency with parameters \.Z and \.z\X${}\E{}$\6
+\&{if} (\\{ppgiven})\5
+${}\{{}$\1\6
+\&{if} ${}(\\{zgiven}\W((\\{pp}\GG\T{8})\I\\{zgiven})){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Option\ has\ "}\|O\.{"d\ non-Z\ primary\ ite}%
+\)\.{ms,\ not\ "}\|O\.{"d:\ "}\|O\.{"s"},\39\\{pp}\GG\T{8},\39\\{zgiven},\39%
+\\{buf});{}$\2\6
+\&{if} ${}((\\{pp}\XOR\\{ppgiven})\AND\T{\^ff}){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|r\K\T{0};{}$ \\{Zchars}[\|r]; ${}\|r\PP){}$\1\6
+\&{if} ${}((\\{pp}\AND(\T{1}\LL\|r))\E\T{0}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Option\ lacks\ a\ "}\|O\.{"c\ item:\ "}\|O%
+\.{"s"},\39\\{Zchars}[\|r],\39\\{buf});{}$\2\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U22.\fi
+
+\M{30}\B\X30:Adjust \PB{\\{pp}} for parameters \.Z and \.z\X${}\E{}$\6
+${}\{{}$\1\6
+\&{for} ${}(\|r\K\T{0};{}$ \\{Zchars}[\|r]; ${}\|r\PP){}$\1\6
+\&{if} ${}(\\{Zchars}[\|r]\E\\{cl}[\\{last\_itm}].\\{name}[\T{0}]){}$\1\5
+\&{break};\2\2\6
+\&{if} (\\{Zchars}[\|r])\5
+${}\{{}$\1\6
+\&{if} ${}(\\{pp}\AND(\T{1}\LL\|r)){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Option\ has\ two\ "}\|O\.{"c\ items:\ "}\|O%
+\.{"s"},\39\\{Zchars}[\|r],\39\\{buf});{}$\2\6
+\&{else}\1\5
+${}\\{pp}\MRL{+{\K}}\T{1}\LL\|r;{}$\2\6
+\4${}\}{}$\5
+\2\&{else}\1\5
+${}\\{pp}\MRL{+{\K}}\T{1}\LL\T{8};{}$\2\6
+\4${}\}{}$\2\par
+\U25.\fi
+
+\M{31}We look at the option list for every primary item, in turn, to find
+an option with smallest cost. If that cost \PB{\\{minc}} is positive, we
+``tax'' the
+item by \PB{\\{minc}}, and subtract \PB{\\{minc}} from the cost of all options
+that contain
+this item.
+
+If an item has no options, its tax is infinite. (But nobody ever gets
+to collect it.)
+
+\Y\B\4\D$\\{infcost}$ \5
+((\&{ullng}) ${}{-}\T{1}{}$)\C{ ``infinite'' cost }\par
+\Y\B\4\X31:Assign taxes\X${}\E{}$\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k<\\{second};{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+\&{register} \&{ullng} \\{minc};\7
+\&{for} ${}(\|p\K\\{nd}[\|k].\\{up},\39\\{minc}\K\\{infcost};{}$ ${}\|p>\|k\W%
+\\{minc};{}$ \|o${},\39\|p\K\\{nd}[\|p].\\{up}){}$\1\6
+\&{if} ${}(\|o,\39\\{nd}[\|p].\\{cost}<\\{minc}){}$\1\5
+${}\\{minc}\K\\{nd}[\|p].\\{cost};{}$\2\2\6
+\&{if} (\\{minc})\5
+${}\{{}$\1\6
+\&{if} ${}(\\{vbose}\AND\\{show\_taxes}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{".8s\ tax=\$"}\|O\.{"llu\\n"},\39%
+\\{cl}[\|k].\\{name},\39\\{minc});{}$\2\6
+${}\\{totaltax}\MRL{+{\K}}\\{minc};{}$\6
+\&{for} ${}(\|p\K\\{nd}[\|k].\\{up};{}$ ${}\|p>\|k;{}$ \|o${},\39\|p\K\\{nd}[%
+\|p].\\{up}){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|q\K\|p+\T{1};{}$  ; \,)\5
+${}\{{}$\1\6
+${}\|o,\39\\{cc}\K\\{nd}[\|q].\\{itm};{}$\6
+\&{if} ${}(\\{cc}\Z\T{0}){}$\1\5
+${}\|o,\39\|q\K\\{nd}[\|q].\\{up};{}$\2\6
+\&{else}\5
+${}\{{}$\1\6
+${}\\{oo},\39\\{nd}[\|q].\\{cost}\MRL{-{\K}}\\{minc};{}$\6
+\&{if} ${}(\|q\E\|p){}$\1\5
+\&{break};\2\6
+${}\|q\PP;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\\{nd}[\|k].\\{tax}\K\\{minc}{}$;\C{ for documentation only, so no mem
+charged }\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{totaltax}\W(\\{vbose}\AND\\{show\_taxes})){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ (total\ tax\ is\ \$"}\|O\.{"llu)\\n"},\39%
+\\{totaltax}){}$;\2\par
+\U3.\fi
+
+\M{32}We use the ``natural list merge sort,'' namely Algorithm 5.2.4L as
+modified by exercise 5.2.4--12.
+
+\Y\B\4\X32:Sort the item lists\X${}\E{}$\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k<\\{last\_itm};{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+\4\\{l1}:\5
+${}\|o,\39\|p\K\\{nd}[\|k].\\{up},\39\|q\K\\{nd}[\|p].\\{up};{}$\6
+\&{for} ${}(\|o,\39\|t\K\\{root};{}$ ${}\|q>\|k;{}$ \|o${},\39\|p\K\|q,\39\|q\K%
+\\{nd}[\|p].\\{up}{}$)\C{ one mem charged for \PB{$\\{nd}[\|p].\\{cost}$} }\1\6
+\&{if} ${}(\|o,\39\\{nd}[\|p].\\{cost}<\\{nd}[\|q].\\{cost}){}$\1\5
+${}\\{nd}[\|t].\\{up}\K{-}\|q,\39\|t\K\|p;{}$\2\2\6
+\&{if} ${}(\|t\I\\{root}){}$\1\5
+\X34:Sort item list \PB{\|k}\X;\2\6
+\X33:Make the \PB{\\{down}} links consistent with the \PB{\\{up}} links\X;\6
+\4${}\}{}$\2\par
+\U3.\fi
+
+\M{33}\B\X33:Make the \PB{\\{down}} links consistent with the \PB{\\{up}} links%
+\X${}\E{}$\6
+\&{for} ${}(\|o,\39\|p\K\|k,\39\|q\K\\{nd}[\|p].\\{up};{}$ ${}\|q>\|k;{}$ %
+\|o${},\39\|p\K\|q,\39\|q\K\\{nd}[\|p].\\{up}){}$\1\5
+${}\|o,\39\\{nd}[\|q].\\{down}\K\|p;{}$\2\6
+${}\\{oo},\39\\{nd}[\|p].\\{up}\K\|k,\39\\{nd}[\|k].\\{down}\K\|p{}$;\par
+\U32.\fi
+
+\M{34}The item list is now divided into sorted sublists, separated by links
+that have temporarily been negated.
+
+The sorted sublists are merged, two by two. List \PB{\|t} is ``above'' list~%
+\PB{\|s};
+hence the sorting is stable with respect to nodes of equal cost.
+
+\Y\B\4\X34:Sort item list \PB{\|k}\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{oo},\39\\{nd}[\|t].\\{up}\K\\{nd}[\|p].\\{up}\K\T{0}{}$;\C{ terminate the
+last two sublists with a null link }\6
+\4\\{l2}:\5
+\&{while} ${}(\|o,\39\\{nd}[\\{root}].\\{up}){}$\5
+${}\{{}$\C{ begin new pass }\1\6
+${}\\{oo},\39\|s\K\|k,\39\|t\K\\{root},\39\|p\K\\{nd}[\|s].\\{up},\39\|q\K{-}%
+\\{nd}[\\{root}].\\{up}{}$;\C{ mem charged for \PB{$\\{nd}[\|p].\\{cost}$} }\6
+\4\\{l3}:\5
+\&{if} ${}(\|o,\39\\{nd}[\|p].\\{cost}<\\{nd}[\|q].\\{cost}){}$\1\5
+\&{goto} \\{l6};\2\6
+\4\\{l4}:\5
+\X35:Advance \PB{\|p}\X;\6
+\4\\{l6}:\5
+\X36:Advance \PB{\|q}\X;\6
+\4\\{l8}:\5
+${}\|p\K{-}\|p,\39\|q\K{-}\|q;{}$\6
+\&{if} (\|q)\1\5
+\&{goto} \\{l3};\2\6
+${}\\{oo},\39\\{nd}[\|s].\\{up}\K{-}\|p,\39\\{nd}[\|t].\\{up}\K\T{0}{}$;\C{ end
+of pass }\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U32.\fi
+
+\M{35}\B\X35:Advance \PB{\|p}\X${}\E{}$\6
+$\|o,\39\\{nd}[\|s].\\{up}\K(\\{nd}[\|s].\\{up}\Z\T{0}\?{-}\|p:\|p);{}$\6
+${}\|o,\39\|s\K\|p,\39\|p\K\\{nd}[\|p].\\{up};{}$\6
+\&{if} ${}(\|p>\T{0}){}$\1\5
+\&{goto} \\{l3};\2\6
+\4\\{l5}:\5
+${}\|o,\39\\{nd}[\|s].\\{up}\K\|q,\39\|s\K\|t;{}$\6
+\&{for} ( ; ${}\|q>\T{0};{}$ \|o${},\39\|q\K\\{nd}[\|q].\\{up}){}$\1\5
+${}\|t\K\|q{}$;\C{ move \PB{\|q} to the end of its sublist }\2\6
+\&{goto} \\{l8};\C{ both sublists have now been merged }\par
+\U34.\fi
+
+\M{36}\B\X36:Advance \PB{\|q}\X${}\E{}$\6
+$\|o,\39\\{nd}[\|s].\\{up}\K(\\{nd}[\|s].\\{up}\Z\T{0}\?{-}\|q:\|q);{}$\6
+${}\|o,\39\|s\K\|q,\39\|q\K\\{nd}[\|q].\\{up};{}$\6
+\&{if} ${}(\|q>\T{0}){}$\1\5
+\&{goto} \\{l3};\2\6
+\4\\{l7}:\5
+${}\|o,\39\\{nd}[\|s].\\{up}\K\|p,\39\|s\K\|t;{}$\6
+\&{for} ( ; ${}\|p>\T{0};{}$ \|o${},\39\|p\K\\{nd}[\|p].\\{up}){}$\1\5
+${}\|t\K\|p{}$;\C{ move \PB{\|p} to the end of its sublist }\2\6
+\&{goto} \\{l8};\C{ both sublists have now been merged }\par
+\U34.\fi
+
+\M{37}\B\X37:Report the successful completion of the input phase\X${}\E{}$\6
+$\\{fprintf}(\\{stderr},\39\.{"("}\|O\.{"lld\ options,\ "}\|O\.{"d+"}\|O\.{"d\
+items,\ "}\|O\.{"d\ entries\ successfu}\)\.{lly\ read)\\n"},\39\\{options},\39%
+\\{second}-\T{1},\39\\{last\_itm}-\\{second},\39\\{last\_node}-\\{last%
+\_itm}){}$;\par
+\U3.\fi
+
+\M{38}The item lengths after input should agree with the item lengths
+after this program has finished. I print them (on request), in order to
+provide some reassurance that the algorithm isn't badly screwed up.
+
+\Y\B\4\X38:Report the item totals\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Item\ totals:"});{}$\6
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k<\\{last\_itm};{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|k\E\\{second}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ |"});{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{"d"},\39\\{nd}[\|k].\\{len});{}$\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\\n"});{}$\6
+\4${}\}{}$\2\par
+\Us3\ET4.\fi
+
+\N{1}{39}The dancing.
+Our strategy for generating all exact covers will be to repeatedly
+choose always the item that appears to be hardest to cover, namely the
+item with shortest list, from all items that still need to be covered.
+And we explore all possibilities via depth-first search.
+
+The neat part of this algorithm is the way the lists are maintained.
+Depth-first search means last-in-first-out maintenance of data structures;
+and it turns out that we need no auxiliary tables to undelete elements from
+lists when backing up. The nodes removed from doubly linked lists remember
+their former neighbors, because we do no garbage collection.
+
+The basic operation is ``covering an item.'' This means removing it
+from the list of items needing to be covered, and ``hiding'' its
+options: removing nodes from other lists whenever they belong to an option of
+a node in this item's list.
+
+\Y\B\4\X39:Solve the problem\X${}\E{}$\6
+\X40:Initialize for level 0\X;\6
+\4\\{forward}:\5
+${}\\{nodes}\PP;{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_profile}){}$\1\5
+${}\\{profile}[\\{level}]\PP;{}$\2\6
+\&{if} (\\{sanity\_checking})\1\5
+\\{sanity}(\,);\2\6
+\X42:Do special things if enough \PB{\\{mems}} have accumulated\X;\6
+\X49:If the remaining cost is clearly too high, \PB{\&{goto} \\{backdown}}\X;\6
+\X53:Set \PB{\\{best\_itm}} to the best item for branching, or \PB{\&{goto} %
+\\{backdown}}\X;\6
+${}\|o,\39\\{partcost}[\\{level}]\K\\{curcost};{}$\6
+${}\\{oo},\39\\{cur\_node}\K\\{choice}[\\{level}]\K\\{nd}[\\{best\_itm}].%
+\\{down};{}$\6
+${}\|o,\39\\{nextcost}\K\\{curcost}+\\{nd}[\\{cur\_node}].\\{cost};{}$\6
+${}\|o,\39\\{coverthresh0}[\\{level}]\K\\{cutoffcost}-\\{nextcost}{}$;\C{ known
+to be positive }\6
+${}\\{cover}(\\{best\_itm},\39\\{coverthresh0}[\\{level}]);{}$\6
+\4\\{advance}:\5
+\&{if} ${}((\\{vbose}\AND\\{show\_choices})\W\\{level}<\\{show\_choices%
+\_max}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"L"}\|O\.{"d:"},\39\\{level});{}$\6
+${}\\{print\_option}(\\{cur\_node},\39\\{stderr},\39\\{cutoffcost}-%
+\\{curcost});{}$\6
+\4${}\}{}$\2\6
+\X45:Cover all other items of \PB{\\{cur\_node}}\X;\6
+\&{if} ${}(\|o,\39\\{cl}[\\{root}].\\{next}\E\\{root}){}$\1\5
+\X55:Visit a solution and \PB{\&{goto} \\{recover}}\X;\2\6
+\&{if} ${}(\PP\\{level}>\\{maxl}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{level}\G\\{max\_level}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Too\ many\ levels!\\n"});{}$\6
+${}\\{exit}({-}\T{4});{}$\6
+\4${}\}{}$\2\6
+${}\\{maxl}\K\\{level};{}$\6
+\4${}\}{}$\2\6
+${}\\{curcost}\K\\{nextcost};{}$\6
+\&{goto} \\{forward};\6
+\4\\{backup}:\5
+${}\|o,\39\\{uncover}(\\{best\_itm},\39\\{coverthresh0}[\\{level}]);{}$\6
+\4\\{backdown}:\5
+\&{if} ${}(\\{level}\E\T{0}){}$\1\5
+\&{goto} \\{done};\2\6
+${}\\{level}\MM;{}$\6
+${}\\{oo},\39\\{cur\_node}\K\\{choice}[\\{level}],\39\\{best\_itm}\K\\{nd}[%
+\\{cur\_node}].\\{itm};{}$\6
+${}\|o,\39\\{curcost}\K\\{partcost}[\\{level}];{}$\6
+\4\\{recover}:\5
+\X46:Uncover all other items of \PB{\\{cur\_node}}\X;\6
+${}\\{oo},\39\\{cur\_node}\K\\{choice}[\\{level}]\K\\{nd}[\\{cur\_node}].%
+\\{down};{}$\6
+\&{if} ${}(\\{cur\_node}\E\\{best\_itm}){}$\1\5
+\&{goto} \\{backup};\2\6
+${}\|o,\39\\{nextcost}\K\\{curcost}+\\{nd}[\\{cur\_node}].\\{cost};{}$\6
+\&{if} ${}(\\{nextcost}\G\\{cutoffcost}){}$\1\5
+\&{goto} \\{backup};\2\6
+\&{goto} \\{advance};\par
+\U2.\fi
+
+\M{40}\B\X40:Initialize for level 0\X${}\E{}$\6
+\&{if} (\\{zgiven})\5
+${}\{{}$\1\6
+\&{for} ${}(\|r\K\T{0};{}$ \\{Zchars}[\|r]; ${}\|r\PP){}$\1\5
+;\2\6
+\&{if} ${}((\\{second}-\T{1})\Xmod(\\{zgiven}+\|r)){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"There\ are\ "}\|O\.{"d\ primary\ items,\ bu}\)%
+\.{t\ z="}\|O\.{"d\ and\ Z="}\|O\.{"s!\\n"},\39\\{second}-\T{1},\39\\{zgiven},%
+\39\\{Zchars});{}$\6
+\&{goto} \\{done};\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\\{level}\K\T{0};{}$\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k<\\{kthresh};{}$ ${}\|k\PP){}$\1\5
+${}\|o,\39\\{bestcost}[\|k]\K\\{infcost};{}$\2\6
+${}\\{cutoffcost}\K\\{infcost};{}$\6
+${}\\{curcost}\K\T{0}{}$;\par
+\U39.\fi
+
+\M{41}\B\X6:Global variables\X${}\mathrel+\E{}$\6
+\&{int} \\{level};\C{ number of choices in current partial solution }\6
+\&{int} \\{choice}[\\{max\_level}];\C{ the node chosen on each level }\6
+\&{ullng} \\{profile}[\\{max\_level}];\C{ number of search tree nodes on each
+level }\6
+\&{ullng} \\{partcost}[\\{max\_level}];\C{ the net cost so far, on each level }%
+\6
+\&{ullng} \\{coverthresh0}[\\{max\_level}]${},{}$ \\{coverthresh}[\\{max%
+\_level}];\C{ historic thresholds }\6
+\&{ullng} ${}\\{bestcost}[\\{maxk}+\T{1}]{}$;\C{ the best \PB{\\{kthresh}} net
+costs known so far }\6
+\&{ullng} \\{cutoffcost};\C{ \PB{\\{bestcost}[\T{0}]}, the cost we need to beat
+}\6
+\&{ullng} \\{cumcost}[\T{7}];\C{ accumulated costs for the \.Z prefix
+characters }\6
+\&{int} \\{solutionsize};\C{ the number of options per solution, if fixed and
+known }\par
+\fi
+
+\M{42}\B\X42:Do special things if enough \PB{\\{mems}} have accumulated\X${}%
+\E{}$\6
+\&{if} ${}(\\{delta}\W(\\{mems}\G\\{thresh})){}$\5
+${}\{{}$\1\6
+${}\\{thresh}\MRL{+{\K}}\\{delta};{}$\6
+\&{if} ${}(\\{vbose}\AND\\{show\_full\_state}){}$\1\5
+\\{print\_state}(\,);\2\6
+\&{else}\1\5
+\\{print\_progress}(\,);\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{mems}\G\\{timeout}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"TIMEOUT!\\n"}){}$;\5
+\&{goto} \\{done};\6
+\4${}\}{}$\2\par
+\U39.\fi
+
+\M{43}When an option is hidden, it leaves all lists except the list of the
+item that is being covered. Thus a node is never removed from a list
+twice.
+
+We can save time by not removing nodes from secondary items that have been
+purified. (Such nodes have \PB{$\\{color}<\T{0}$}. Note that \PB{\\{color}} and
+\PB{\\{itm}} are
+stored in the same octabyte; hence we pay only one mem to look at
+them both.)
+
+We save even more time by not updating the \PB{\\{len}} fields of secondary
+items.
+
+It's not necessary to hide all the options of the list being covered.
+Only the options whose cost is below a given threshold will ever
+be relevant, since we seek only minimum-cost solutions.
+
+\Y\B\4\X15:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{cover}(\&{int} \|c${},\39{}$\&{ullng} \\{thresh})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \\{cc}${},{}$ \|l${},{}$ \|r${},{}$ \\{rr}${},{}$ %
+\\{nn}${},{}$ \\{uu}${},{}$ \\{dd}${},{}$ \|t;\7
+${}\|o,\39\|l\K\\{cl}[\|c].\\{prev},\39\|r\K\\{cl}[\|c].\\{next};{}$\6
+${}\\{oo},\39\\{cl}[\|l].\\{next}\K\|r,\39\\{cl}[\|r].\\{prev}\K\|l;{}$\6
+${}\\{updates}\PP;{}$\6
+\&{for} ${}(\|o,\39\\{rr}\K\\{nd}[\|c].\\{down};{}$ ${}\\{rr}\G\\{last%
+\_itm};{}$ \|o${},\39\\{rr}\K\\{nd}[\\{rr}].\\{down}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|o,\39\\{nd}[\\{rr}].\\{cost}\G\\{thresh}){}$\1\5
+\&{break};\2\6
+\&{for} ${}(\\{nn}\K\\{rr}+\T{1};{}$ ${}\\{nn}\I\\{rr};{}$ \,)\5
+${}\{{}$\1\6
+\&{if} ${}(\|o,\39\\{nd}[\\{nn}].\\{color}\G\T{0}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\\{uu}\K\\{nd}[\\{nn}].\\{up},\39\\{dd}\K\\{nd}[\\{nn}].\\{down};{}$\6
+${}\\{cc}\K\\{nd}[\\{nn}].\\{itm};{}$\6
+\&{if} ${}(\\{cc}\Z\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{nn}\K\\{uu}{}$;\5
+\&{continue};\6
+\4${}\}{}$\2\6
+${}\\{oo},\39\\{nd}[\\{uu}].\\{down}\K\\{dd},\39\\{nd}[\\{dd}].\\{up}\K%
+\\{uu};{}$\6
+${}\\{updates}\PP;{}$\6
+\&{if} ${}(\\{cc}<\\{second}){}$\1\5
+${}\\{oo},\39\\{nd}[\\{cc}].\\{len}\MM;{}$\2\6
+\4${}\}{}$\2\6
+${}\\{nn}\PP;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{44}I used to think that it was important to uncover an item by
+processing its options from bottom to top, since covering was done
+from top to bottom. But while writing this
+program I realized that, amazingly, no harm is done if the
+options are processed again in the same order.
+It's easier to go down than up, because of the cutoff threshold;
+hence that observation is good news.
+Whether we go up or down, the pointers
+execute an exquisitely choreo\-graphed dance that returns them almost
+magically to their former state.
+
+Of course we must be careful to use exactly the same thresholds
+when uncovering as we did when covering, even though the
+\PB{\\{cutoffcost}} in this program is a moving target.
+
+\Y\B\4\X15:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{uncover}(\&{int} \|c${},\39{}$\&{ullng} \\{thresh})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \\{cc}${},{}$ \|l${},{}$ \|r${},{}$ \\{rr}${},{}$ %
+\\{nn}${},{}$ \\{uu}${},{}$ \\{dd}${},{}$ \|t;\7
+\&{for} ${}(\|o,\39\\{rr}\K\\{nd}[\|c].\\{down};{}$ ${}\\{rr}\G\\{last%
+\_itm};{}$ \|o${},\39\\{rr}\K\\{nd}[\\{rr}].\\{down}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|o,\39\\{nd}[\\{rr}].\\{cost}\G\\{thresh}){}$\1\5
+\&{break};\2\6
+\&{for} ${}(\\{nn}\K\\{rr}+\T{1};{}$ ${}\\{nn}\I\\{rr};{}$ \,)\5
+${}\{{}$\1\6
+\&{if} ${}(\|o,\39\\{nd}[\\{nn}].\\{color}\G\T{0}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\\{uu}\K\\{nd}[\\{nn}].\\{up},\39\\{dd}\K\\{nd}[\\{nn}].\\{down};{}$\6
+${}\\{cc}\K\\{nd}[\\{nn}].\\{itm};{}$\6
+\&{if} ${}(\\{cc}\Z\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{nn}\K\\{uu}{}$;\5
+\&{continue};\6
+\4${}\}{}$\2\6
+${}\\{oo},\39\\{nd}[\\{uu}].\\{down}\K\\{nd}[\\{dd}].\\{up}\K\\{nn};{}$\6
+\&{if} ${}(\\{cc}<\\{second}){}$\1\5
+${}\\{oo},\39\\{nd}[\\{cc}].\\{len}\PP;{}$\2\6
+\4${}\}{}$\2\6
+${}\\{nn}\PP;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\|o,\39\|l\K\\{cl}[\|c].\\{prev},\39\|r\K\\{cl}[\|c].\\{next};{}$\6
+${}\\{oo},\39\\{cl}[\|l].\\{next}\K\\{cl}[\|r].\\{prev}\K\|c;{}$\6
+\4${}\}{}$\2\par
+\fi
+
+\M{45}\B\X45:Cover all other items of \PB{\\{cur\_node}}\X${}\E{}$\6
+$\|o,\39\\{coverthresh}[\\{level}]\K\\{cutoffcost}-\\{nextcost};{}$\6
+\&{for} ${}(\\{pp}\K\\{cur\_node}+\T{1};{}$ ${}\\{pp}\I\\{cur\_node};{}$ \,)\5
+${}\{{}$\1\6
+${}\|o,\39\\{cc}\K\\{nd}[\\{pp}].\\{itm};{}$\6
+\&{if} ${}(\\{cc}\Z\T{0}){}$\1\5
+${}\|o,\39\\{pp}\K\\{nd}[\\{pp}].\\{up};{}$\2\6
+\&{else}\5
+${}\{{}$\1\6
+\&{if} ${}(\R\\{nd}[\\{pp}].\\{color}){}$\1\5
+${}\\{cover}(\\{cc},\39\\{coverthresh}[\\{level}]);{}$\2\6
+\&{else} \&{if} ${}(\\{nd}[\\{pp}].\\{color}>\T{0}){}$\1\5
+${}\\{purify}(\\{pp},\39\\{coverthresh}[\\{level}]);{}$\2\6
+${}\\{pp}\PP;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U39.\fi
+
+\M{46}We must go leftward as we uncover the items, because we went
+rightward when covering them.
+
+\Y\B\4\X46:Uncover all other items of \PB{\\{cur\_node}}\X${}\E{}$\6
+\|o;\C{ charge one mem for putting \PB{\\{coverthresh}[\\{level}]} in a
+register }\6
+\&{for} ${}(\\{pp}\K\\{cur\_node}-\T{1};{}$ ${}\\{pp}\I\\{cur\_node};{}$ \,)\5
+${}\{{}$\1\6
+${}\|o,\39\\{cc}\K\\{nd}[\\{pp}].\\{itm};{}$\6
+\&{if} ${}(\\{cc}\Z\T{0}){}$\1\5
+${}\|o,\39\\{pp}\K\\{nd}[\\{pp}].\\{down};{}$\2\6
+\&{else}\5
+${}\{{}$\1\6
+\&{if} ${}(\R\\{nd}[\\{pp}].\\{color}){}$\1\5
+${}\\{uncover}(\\{cc},\39\\{coverthresh}[\\{level}]);{}$\2\6
+\&{else} \&{if} ${}(\\{nd}[\\{pp}].\\{color}>\T{0}){}$\1\5
+${}\\{unpurify}(\\{pp},\39\\{coverthresh}[\\{level}]);{}$\2\6
+${}\\{pp}\MM;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U39.\fi
+
+\M{47}When we choose an option that specifies colors in one or more items,
+we ``purify'' those items by removing all incompatible options.
+All options that want the chosen color in a purified item are temporarily
+given the color code~\PB{${-}\T{1}$} so that they won't be purified again.
+
+\Y\B\4\X15:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{purify}(\&{int} \|p${},\39{}$\&{ullng} \\{thresh})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \\{cc}${},{}$ \\{rr}${},{}$ \\{nn}${},{}$ \\{uu}${},{}$ %
+\\{dd}${},{}$ \|t${},{}$ \|x;\7
+${}\|o,\39\\{cc}\K\\{nd}[\|p].\\{itm},\39\|x\K\\{nd}[\|p].\\{color};{}$\6
+${}\\{nd}[\\{cc}].\\{color}\K\|x{}$;\C{ no mem charged, because this is for %
+\PB{\\{print\_option}} only }\6
+${}\\{cleansings}\PP;{}$\6
+\&{for} ${}(\|o,\39\\{rr}\K\\{nd}[\\{cc}].\\{down};{}$ ${}\\{rr}\G\\{last%
+\_itm};{}$ \|o${},\39\\{rr}\K\\{nd}[\\{rr}].\\{down}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|o,\39\\{nd}[\\{rr}].\\{cost}\G\\{thresh}){}$\1\5
+\&{break};\2\6
+\&{if} ${}(\|o,\39\\{nd}[\\{rr}].\\{color}\I\|x){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\\{nn}\K\\{rr}+\T{1};{}$ ${}\\{nn}\I\\{rr};{}$ \,)\5
+${}\{{}$\1\6
+\&{if} ${}(\|o,\39\\{nd}[\\{nn}].\\{color}\G\T{0}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\\{uu}\K\\{nd}[\\{nn}].\\{up},\39\\{dd}\K\\{nd}[\\{nn}].\\{down};{}$\6
+${}\\{cc}\K\\{nd}[\\{nn}].\\{itm};{}$\6
+\&{if} ${}(\\{cc}\Z\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{nn}\K\\{uu}{}$;\5
+\&{continue};\6
+\4${}\}{}$\2\6
+${}\\{oo},\39\\{nd}[\\{uu}].\\{down}\K\\{dd},\39\\{nd}[\\{dd}].\\{up}\K%
+\\{uu};{}$\6
+${}\\{updates}\PP;{}$\6
+\&{if} ${}(\\{cc}<\\{second}){}$\1\5
+${}\\{oo},\39\\{nd}[\\{cc}].\\{len}\MM;{}$\2\6
+\4${}\}{}$\2\6
+${}\\{nn}\PP;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\5
+\2\&{else} \&{if} ${}(\\{rr}\I\|p){}$\1\5
+${}\\{cleansings}\PP,\39\|o,\39\\{nd}[\\{rr}].\\{color}\K{-}\T{1};{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{48}Just as \PB{\\{purify}} is analogous to \PB{\\{cover}}, the inverse
+process is
+analogous to \PB{\\{uncover}}.
+
+\Y\B\4\X15:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{unpurify}(\&{int} \|p${},\39{}$\&{ullng} \\{thresh})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \\{cc}${},{}$ \\{rr}${},{}$ \\{nn}${},{}$ \\{uu}${},{}$ %
+\\{dd}${},{}$ \|t${},{}$ \|x;\7
+${}\|o,\39\\{cc}\K\\{nd}[\|p].\\{itm},\39\|x\K\\{nd}[\|p].\\{color}{}$;\C{
+there's no need to clear \PB{$\\{nd}[\\{cc}].\\{color}$} }\6
+\&{for} ${}(\|o,\39\\{rr}\K\\{nd}[\\{cc}].\\{down};{}$ ${}\\{rr}\G\\{last%
+\_itm};{}$ \|o${},\39\\{rr}\K\\{nd}[\\{rr}].\\{down}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|o,\39\\{nd}[\\{rr}].\\{cost}\G\\{thresh}){}$\1\5
+\&{break};\2\6
+\&{if} ${}(\|o,\39\\{nd}[\\{rr}].\\{color}<\T{0}){}$\1\5
+${}\|o,\39\\{nd}[\\{rr}].\\{color}\K\|x;{}$\2\6
+\&{else} \&{if} ${}(\\{rr}\I\|p){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\\{nn}\K\\{rr}+\T{1};{}$ ${}\\{nn}\I\\{rr};{}$ \,)\5
+${}\{{}$\1\6
+\&{if} ${}(\|o,\39\\{nd}[\\{nn}].\\{color}\G\T{0}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\\{uu}\K\\{nd}[\\{nn}].\\{up},\39\\{dd}\K\\{nd}[\\{nn}].\\{down};{}$\6
+${}\\{cc}\K\\{nd}[\\{nn}].\\{itm};{}$\6
+\&{if} ${}(\\{cc}\Z\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{nn}\K\\{uu}{}$;\5
+\&{continue};\6
+\4${}\}{}$\2\6
+${}\\{oo},\39\\{nd}[\\{uu}].\\{down}\K\\{nd}[\\{dd}].\\{up}\K\\{nn};{}$\6
+\&{if} ${}(\\{cc}<\\{second}){}$\1\5
+${}\\{oo},\39\\{nd}[\\{cc}].\\{len}\PP;{}$\2\6
+\4${}\}{}$\2\6
+${}\\{nn}\PP;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{49}Here's where we use the \.Z and \.z heuristics to provide
+lower bounds that don't apply in general.
+
+\Y\B\4\X49:If the remaining cost is clearly too high, \PB{\&{goto} %
+\\{backdown}}\X${}\E{}$\6
+\&{if} ${}(\\{ppgiven}\W\\{cutoffcost}\I\\{infcost}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{zgiven}>\T{1}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{second}-\\{level}*\\{zgiven}\Z\\{sortbufsize}+\T{1}){}$\1\5
+${}\\{pp}\K\\{zgiven};{}$\2\6
+\&{else} \&{if} ${}(\\{ppgiven}\AND\T{\^ff}){}$\1\5
+${}\\{pp}\K\T{0};{}$\2\6
+\&{else}\1\5
+${}\\{pp}\K{-}\T{1};{}$\2\6
+\4${}\}{}$\5
+\2\&{else}\1\5
+${}\\{pp}\K\\{zgiven};{}$\2\6
+\&{if} ${}(\\{pp}\G\T{0}){}$\1\5
+\X50:Go to \PB{\\{backdown}} if the remaining min costs are too high\X\2\6
+\4${}\}{}$\2\par
+\U39.\fi
+
+\M{50}\B\X50:Go to \PB{\\{backdown}} if the remaining min costs are too high%
+\X${}\E{}$\6
+${}\{{}$\1\6
+\&{register} \&{ullng} \\{newcost}${},{}$ \\{oldcost}${},{}$ \\{acccost};\7
+${}\\{acccost}\K\\{curcost};{}$\6
+\&{for} ${}(\|r\K\T{0};{}$ \\{Zchars}[\|r]; ${}\|r\PP){}$\1\5
+${}\|o,\39\\{cumcost}[\|r]\K\\{curcost};{}$\2\6
+\&{for} ${}(\|o,\39\|k\K\\{cl}[\\{root}].\\{next},\39\|t\K\T{0};{}$ ${}\|k\I%
+\\{root};{}$ \|o${},\39\|k\K\\{cl}[\|k].\\{next}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\|p\K\\{nd}[\|k].\\{down};{}$\6
+\&{if} ${}(\|p<\\{last\_itm}){}$\5
+${}\{{}$\1\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"(Level\ "}\|O\.{"d,\ "}\|O\.{".8s's\ list\ is\
+empty}\)\.{)\\n"},\39\\{level},\39\\{cl}[\|k].\\{name});{}$\2\6
+\&{goto} \\{backdown};\6
+\4${}\}{}$\2\6
+${}\\{oo},\39\\{cc}\K\\{cl}[\|k].\\{name}[\T{0}],\39\\{tmpcost}\K\\{nd}[\|p].%
+\\{cost};{}$\6
+\&{for} ${}(\|r\K\T{0};{}$ \\{Zchars}[\|r]; ${}\|r\PP){}$\1\6
+\&{if} ${}(\\{Zchars}[\|r]\E\\{cc}){}$\1\5
+\&{break};\2\2\6
+\&{if} (\\{Zchars}[\|r])\1\5
+\X51:Include \PB{\\{tmpcost}} in \PB{\\{cumcost}[\|r]}\X\2\6
+\&{else} \&{if} (\\{pp})\1\5
+\X52:Include \PB{\\{tmpcost}} in \PB{\\{acccost}}\X;\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U49.\fi
+
+\M{51}\B\X51:Include \PB{\\{tmpcost}} in \PB{\\{cumcost}[\|r]}\X${}\E{}$\6
+${}\{{}$\1\6
+\&{if} ${}(\|o,\39\\{cumcost}[\|r]+\\{tmpcost}\G\\{cutoffcost}){}$\5
+${}\{{}$\1\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"(Level\ "}\|O\.{"d,\ "}\|O\.{".8s's\ cost\
+overflow}\)\.{ed)\\n"},\39\\{level},\39\\{cl}[\|k].\\{name});{}$\2\6
+\&{goto} \\{backdown};\6
+\4${}\}{}$\2\6
+${}\|o,\39\\{cumcost}[\|r]\MRL{+{\K}}\\{tmpcost};{}$\6
+\4${}\}{}$\2\par
+\U50.\fi
+
+\M{52}At this point \PB{$\\{pp}\K\\{zgiven}$} is a positive number $z$, and %
+\PB{\\{cl}[\|k]} is one
+of the \PB{\\{pp}} active items that doesn't begin with a \.Z-specified prefix.
+We also know that exactly $kz={}$\PB{$\\{second}-\T{1}-\\{level}*\|z$} primary
+items are active, and that exactly $k$ more levels must be completed
+before we have a solution.
+
+The situation is simple when $z=1$. But when $z>1$, suppose the minimum
+net costs of active items are $c_1\le c_2\le\cdots\le c_{kz}$.
+Then we'll spend at least $c_z+c_{2z}+\cdots+c_{kz}$ while
+covering them. A cute little online algorithm computes this lower bound nicely.
+
+\Y\B\4\X52:Include \PB{\\{tmpcost}} in \PB{\\{acccost}}\X${}\E{}$\6
+${}\{{}$\1\6
+\&{if} ${}(\\{pp}\E\T{1}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{acccost}+\\{tmpcost}\G\\{cutoffcost}){}$\5
+${}\{{}$\1\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"(Level\ "}\|O\.{"d,\ "}\|O\.{".8s's\ cost\
+overflow}\)\.{ed)\\n"},\39\\{level},\39\\{cl}[\|k].\\{name});{}$\2\6
+\&{goto} \\{backdown};\6
+\4${}\}{}$\2\6
+${}\\{acccost}\MRL{+{\K}}\\{tmpcost};{}$\6
+\4${}\}{}$\5
+\2\&{else}\5
+${}\{{}$\C{ we'll sort \PB{\\{tmpcost}} into \PB{\\{sortbuf}}, which has \PB{%
+\|t} costs already }\1\6
+\&{for} ${}(\|p\K\|t,\39\\{oldcost}\K\T{0};{}$ \|p; ${}\|p\MM,\39\\{oldcost}\K%
+\\{newcost}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\\{newcost}\K\\{sortbuf}[\\{sortbufsize}-\|p];{}$\6
+\&{if} ${}(\\{tmpcost}\Z\\{newcost}){}$\1\5
+\&{break};\2\6
+\&{if} ${}((\|p\Xmod\\{pp})\E\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{acccost}\MRL{+{\K}}\\{newcost}-\\{oldcost};{}$\6
+\&{if} ${}(\\{acccost}\G\\{cutoffcost}){}$\5
+${}\{{}$\1\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"(Level\ "}\|O\.{"d,\ "}\|O\.{".8s's\ cost\
+overflow}\)\.{ed)\\n"},\39\\{level},\39\\{cl}[\|k].\\{name});{}$\2\6
+\&{goto} \\{backdown};\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\|o,\39\\{sortbuf}[\\{sortbufsize}-\|p-\T{1}]\K\\{newcost}{}$;\C{ it had
+been \PB{\\{oldcost}} }\6
+\4${}\}{}$\2\6
+\&{if} ${}((\|p\Xmod\\{pp})\E\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{acccost}\MRL{+{\K}}\\{tmpcost}-\\{oldcost};{}$\6
+\&{if} ${}(\\{acccost}\G\\{cutoffcost}){}$\5
+${}\{{}$\1\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"("}\|O\.{".8s's\ cost\ caused\ o}\)\.{verflow)%
+\\n"},\39\\{cl}[\|k].\\{name});{}$\2\6
+\&{goto} \\{backdown};\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\|o,\39\\{sortbuf}[\\{sortbufsize}-\|p-\T{1}]\K\\{tmpcost}{}$;\C{ it had
+been \PB{\\{oldcost}} }\6
+${}\|t\PP;{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U50.\fi
+
+\M{53}The ``best item'' is considered to be an item that minimizes the
+number of remaining choices. If there are several candidates, we
+choose the leftmost one that has maximum minimum net cost (because
+that cost must be paid somehow).
+
+(This part of the program, whose logic is justified by the sorting that was
+done during the input phase, represents the most significant changes between
+{\mc DLX5} and {\mc DLX2}. I imagine that the heuristics used here might be
+significantly improvable, especially for certain classes of problems.
+For example, it may be better to do a 5-way branch on expensive choices
+than a 2-way branch on cheap ones, because the expensive choices might quickly
+peter out. And more elaborate ways to derive
+lower bounds on the cost of covering the remaining primary items might be
+based on the minimum cost per item in the remaining options. For example,
+we could give each node a new field \PB{\\{optref}}, which points to the
+spacer following its option. Then the length of this option would readily
+be obtained from that spacer, \PB{$\\{nd}[\\{nd}[\|p].\\{optref}]$}.
+One could use the currently dormant \PB{\\{cost}} and \PB{\\{optref}} fields of
+each spacer to
+maintain a doubly linked list of options in order of their cost/item.
+But I don't have time to investigate such ideas myself.)
+
+\Y\B\4\D$\\{explaining}$ \5
+$((\\{vbose}\AND\\{show\_details})\W\\{level}<\\{show\_choices\_max}\W\\{level}%
+\G\\{maxl}-\\{show\_choices\_gap}{}$)\par
+\Y\B\4\X53:Set \PB{\\{best\_itm}} to the best item for branching, or \PB{%
+\&{goto} \\{backdown}}\X${}\E{}$\6
+$\|t\K\\{max\_nodes},\39\\{tmpcost}\K\T{0};{}$\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"Level\ "}\|O\.{"d:"},\39\\{level});{}$\2\6
+\&{for} ${}(\|o,\39\|k\K\\{cl}[\\{root}].\\{next};{}$ ${}\|k\I\\{root};{}$ %
+\|o${},\39\|k\K\\{cl}[\|k].\\{next}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\|p\K\\{nd}[\|k].\\{down};{}$\6
+\&{if} ${}(\|p\E\|k){}$\5
+${}\{{}$\C{ the item list is empty, we must backtrack }\1\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{".8s(0)"},\39\\{cl}[\|k].%
+\\{name});{}$\2\6
+${}\|t\K\T{0},\39\\{best\_itm}\K\|k;{}$\6
+\&{break};\6
+\4${}\}{}$\2\6
+${}\|o,\39\\{mincost}\K\\{nd}[\|p].\\{cost};{}$\6
+\&{if} ${}(\\{mincost}\G\\{cutoffcost}-\\{curcost}){}$\5
+${}\{{}$\C{ no usable items, we must backtrack }\1\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{".8s(0\$"}\|O\.{"llu)"},\39\\{cl}[%
+\|k].\\{name},\39\\{mincost});{}$\2\6
+${}\|t\K\T{0},\39\\{best\_itm}\K\|k;{}$\6
+\&{break};\6
+\4${}\}{}$\2\6
+\X54:Look at the least-cost options for item \PB{\|k}, possibly updating \PB{%
+\\{best\_itm}}\X;\6
+\4${}\}{}$\2\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ branching\ on\ "}\|O\.{".8s("}\|O\.{"d)%
+\\n"},\39\\{cl}[\\{best\_itm}].\\{name},\39\|t);{}$\2\6
+\&{if} (\\{shape\_file})\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{shape\_file},\39\.{""}\|O\.{"d\ "}\|O\.{".8s\\n"},\39\|t,\39%
+\\{cl}[\\{best\_itm}].\\{name});{}$\6
+\\{fflush}(\\{shape\_file});\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|t\E\T{0}){}$\1\5
+\&{goto} \\{backdown};\2\par
+\U39.\fi
+
+\M{54}At this point we know that \PB{$\|t\G\T{1}$}, \PB{$\|p\K\\{nd}[\|k].%
+\\{down}\I\|k$}, and
+\PB{$\\{mincost}\K\\{nd}[\|p].\\{cost}<\\{cutoffcost}-\\{curcost}$}. Therefore %
+\PB{\|k} might turn out
+to be the new \PB{\\{best\_itm}}.
+
+\Y\B\4\X54:Look at the least-cost options for item \PB{\|k}, possibly updating %
+\PB{\\{best\_itm}}\X${}\E{}$\6
+\&{for} ${}(\|o,\39\|s\K\T{1},\39\|p\K\\{nd}[\|p].\\{down};{}$  ; \|o${},\39\|p%
+\K\\{nd}[\|p].\\{down},\39\|s\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|p<\\{last\_itm}\V(\|o,\39\\{nd}[\|p].\\{cost}\G\\{cutoffcost}-%
+\\{curcost})){}$\5
+${}\{{}$\1\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{".8s("}\|O\.{"d\$"}\|O\.{"llu)"},\39%
+\\{cl}[\|k].\\{name},\39\|s,\39\\{mincost});{}$\2\6
+\&{break};\C{ there are \PB{\|s} usable options in \PB{\|k}'s item list }\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|s\E\|t){}$\5
+${}\{{}$\C{ there are more than \PB{\|t} usable options }\1\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{".8s(>"}\|O\.{"d)"},\39\\{cl}[\|k].%
+\\{name},\39\|t);{}$\2\6
+\&{goto} \\{no\_change};\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|s\G\\{lenthresh}){}$\5
+${}\{{}$\C{ let's not search too far down the list }\1\6
+${}\|o,\39\|s\K\\{nd}[\|k].\\{len}{}$;\C{ be content with an upper bound }\6
+\&{if} (\\{explaining})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{".8s("}\|O\.{"d?\$"}\|O\.{"llu)"},%
+\39\\{cl}[\|k].\\{name},\39\|s,\39\\{mincost});{}$\2\6
+\&{break};\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|s<\|t\V(\|s\E\|t\W\\{mincost}>\\{tmpcost})){}$\1\5
+${}\|t\K\|s,\39\\{best\_itm}\K\|k,\39\\{tmpcost}\K\\{mincost};{}$\2\6
+\\{no\_change}:\par
+\U53.\fi
+
+\M{55}\B\X55:Visit a solution and \PB{\&{goto} \\{recover}}\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{nodes}\PP{}$;\C{ a solution is a special node, see 7.2.2--(4) }\6
+\&{if} ${}(\\{level}+\T{1}>\\{maxl}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{level}+\T{1}\G\\{max\_level}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Too\ many\ levels!\\n"});{}$\6
+${}\\{exit}({-}\T{5});{}$\6
+\4${}\}{}$\2\6
+${}\\{maxl}\K\\{level}+\T{1};{}$\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{vbose}\AND\\{show\_profile}){}$\1\5
+${}\\{profile}[\\{level}+\T{1}]\PP;{}$\2\6
+\&{if} (\\{shape\_file})\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{shape\_file},\39\.{"sol\\n"}){}$;\5
+\\{fflush}(\\{shape\_file});\6
+\4${}\}{}$\2\6
+\X56:Update \PB{\\{cutoffcost}}\X;\6
+\X58:Record solution and \PB{\&{goto} \\{recover}}\X;\6
+\4${}\}{}$\2\par
+\U39.\fi
+
+\M{56}We remember the \PB{\\{kthresh}} best costs found so far in a heap, with
+\PB{$\\{bestcost}[\|h]\G\\{bestcost}[\|h+\|h+\T{1}]$} and
+\PB{$\\{bestcost}[\|h]\G\\{bestcost}[\|h+\|h+\T{2}]$}. In particular, \PB{$%
+\\{bestcost}[\T{0}]\K\\{cutoffcost}$} is the
+largest of these net costs, and we remove it from the heap when a new
+solution has been found.
+
+When \PB{\\{kthresh}} is even, this code uses the fact that \PB{$\\{bestcost}[%
+\\{kthresh}]\K\T{0}$}.
+
+\Y\B\4\X56:Update \PB{\\{cutoffcost}}\X${}\E{}$\6
+${}\{{}$\1\6
+\&{register} \&{int} \|h${},{}$ \\{hh};\C{ a hole in the heap, and its larger
+successor }\7
+${}\\{tmpcost}\K\\{cutoffcost};{}$\6
+\&{for} ${}(\|h\K\T{0},\39\\{hh}\K\T{2};{}$ ${}\\{hh}\Z\\{kthresh};{}$ ${}%
+\\{hh}\K\|h+\|h+\T{2}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{oo},\39\\{bestcost}[\\{hh}]>\\{bestcost}[\\{hh}-\T{1}]){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{nextcost}<\\{bestcost}[\\{hh}]){}$\1\5
+${}\|o,\39\\{bestcost}[\|h]\K\\{bestcost}[\\{hh}],\39\|h\K\\{hh};{}$\2\6
+\&{else}\1\5
+\&{break};\2\6
+\4${}\}{}$\5
+\2\&{else} \&{if} ${}(\\{nextcost}<\\{bestcost}[\\{hh}-\T{1}]){}$\1\5
+${}\|o,\39\\{bestcost}[\|h]\K\\{bestcost}[\\{hh}-\T{1}],\39\|h\K\\{hh}-%
+\T{1};{}$\2\6
+\&{else}\1\5
+\&{break};\2\6
+\4${}\}{}$\2\6
+${}\|o,\39\\{bestcost}[\|h]\K\\{nextcost};{}$\6
+${}\|o,\39\\{cutoffcost}\K\\{bestcost}[\T{0}];{}$\6
+\4${}\}{}$\2\par
+\U55.\fi
+
+\M{57}\B\X57:Sort the \PB{\\{bestcost}} heap in preparation for final printing%
+\X${}\E{}$\6
+\&{for} ${}(\|p\K\\{kthresh};{}$ ${}\|p>\T{2};{}$ ${}\|p\MM){}$\5
+${}\{{}$\1\6
+\&{register} \&{int} \|h${},{}$ \\{hh};\C{ a hole in the heap, and its larger
+successor }\7
+${}\\{nextcost}\K\\{bestcost}[\|p-\T{1}],\39\\{bestcost}[\|p-\T{1}]\K\T{0},\39%
+\\{bestcost}[\|p]\K\\{bestcost}[\T{0}];{}$\6
+\&{for} ${}(\|h\K\T{0},\39\\{hh}\K\T{2};{}$ ${}\\{hh}<\|p;{}$ ${}\\{hh}\K\|h+%
+\|h+\T{2}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{bestcost}[\\{hh}]>\\{bestcost}[\\{hh}-\T{1}]){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{nextcost}<\\{bestcost}[\\{hh}]){}$\1\5
+${}\\{bestcost}[\|h]\K\\{bestcost}[\\{hh}],\39\|h\K\\{hh};{}$\2\6
+\&{else}\1\5
+\&{break};\2\6
+\4${}\}{}$\5
+\2\&{else} \&{if} ${}(\\{nextcost}<\\{bestcost}[\\{hh}-\T{1}]){}$\1\5
+${}\\{bestcost}[\|h]\K\\{bestcost}[\\{hh}-\T{1}],\39\|h\K\\{hh}-\T{1};{}$\2\6
+\&{else}\1\5
+\&{break};\2\6
+\4${}\}{}$\2\6
+${}\\{bestcost}[\|h]\K\\{nextcost};{}$\6
+\4${}\}{}$\2\6
+${}\\{bestcost}[\|p]\K\\{bestcost}[\T{0}]{}$;\C{ at this point \PB{$\|p\K%
+\T{1}$} or \PB{$\|p\K\T{2}$} }\C{ now $\PB{\\{bestcost}[\T{1}]}\le\PB{%
+\\{bestcost}[\T{2}]}\le\cdots\le\PB{\\{bestcost}[\\{kthresh}]}$ }\par
+\U9.\fi
+
+\M{58}\B\X58:Record solution and \PB{\&{goto} \\{recover}}\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{count}\PP;{}$\6
+\&{if} ${}(\\{spacing}\W(\\{count}\Xmod\\{spacing}\E\T{0})){}$\5
+${}\{{}$\1\6
+${}\\{printf}(\.{""}\|O\.{"lld:\ (total\ cost\ \$"}\|O\.{"llu)\\n"},\39%
+\\{count},\39\\{totaltax}+\\{nextcost});{}$\6
+\&{for} ${}(\|k\K\T{0};{}$ ${}\|k\Z\\{level};{}$ ${}\|k\PP){}$\1\5
+${}\\{print\_option}(\\{choice}[\|k],\39\\{stdout},\39\\{tmpcost}-\\{partcost}[%
+\|k]);{}$\2\6
+\\{fflush}(\\{stdout});\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{count}\G\\{maxcount}){}$\1\5
+\&{goto} \\{done};\2\6
+\&{goto} \\{recover};\6
+\4${}\}{}$\2\par
+\U55.\fi
+
+\M{59}\B\X15:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{print\_state}(\&{void})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|l;\7
+${}\\{fprintf}(\\{stderr},\39\.{"Current\ state\ (leve}\)\.{l\ "}\|O\.{"d):%
+\\n"},\39\\{level});{}$\6
+\&{for} ${}(\|l\K\T{0};{}$ ${}\|l<\\{level};{}$ ${}\|l\PP){}$\5
+${}\{{}$\1\6
+${}\\{print\_option}(\\{choice}[\|l],\39\\{stderr},\39\\{cutoffcost}-%
+\\{partcost}[\|l]);{}$\6
+\&{if} ${}(\|l\G\\{show\_levels\_max}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ ...\\n"});{}$\6
+\&{break};\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{cutoffcost}<\\{infcost}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{"lld\ solutions,\ \$"}\|O\.{"llu,\
+"}\|O\.{"lld\ mems,\ and\ max\ l}\)\.{evel\ "}\|O\.{"d\ so\ far.\\n"},\39%
+\\{count},\39\\{cutoffcost}+\\{totaltax},\39\\{mems},\39\\{maxl});{}$\2\6
+\&{else}\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{"lld\ solutions,\ "}\|O\.{"lld\
+mems,\ and\ max\ l}\)\.{evel\ "}\|O\.{"d\ so\ far.\\n"},\39\\{count},\39%
+\\{mems},\39\\{maxl});{}$\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{60}During a long run, it's helpful to have some way to measure progress.
+The following routine prints a string that indicates roughly where we
+are in the search tree. The string consists of character pairs, separated
+by blanks, where each character pair represents a branch of the search
+tree. When a node has $d$ descendants and we are working on the $k$th,
+the two characters respectively represent $k$ and~$d$ in a simple code;
+namely, the values 0, 1, \dots, 61 are denoted by
+$$\.0,\ \.1,\ \dots,\ \.9,\ \.a,\ \.b,\ \dots,\ \.z,\ \.A,\ \.B,\ \dots,\.Z.$$
+All values greater than 61 are shown as `\.*'. Notice that as computation
+proceeds, this string will increase lexicographically.
+
+Following that string, a fractional estimate of total progress is computed,
+based on the na{\"\i}ve assumption that the search tree has a uniform
+branching structure. If the tree consists
+of a single node, this estimate is~.5; otherwise, if the first choice
+is `$k$ of~$d$', the estimate is $(k-1)/d$ plus $1/d$ times the
+recursively evaluated estimate for the $k$th subtree. (This estimate
+might obviously be very misleading, in some cases, but at least it
+grows monotonically.)
+
+\Y\B\4\X15:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{print\_progress}(\&{void})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|l${},{}$ \|k${},{}$ \|d${},{}$ \|c${},{}$ \|p;\6
+\&{register} \&{double} \|f${},{}$ \\{fd};\7
+\&{if} ${}(\\{cutoffcost}<\\{infcost}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ after\ "}\|O\.{"lld\ mems:\ "}\|O\.{"lld\
+sols,\ \$"}\|O\.{"llu,"},\39\\{mems},\39\\{count},\39\\{cutoffcost}+%
+\\{totaltax});{}$\2\6
+\&{else}\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ after\ "}\|O\.{"lld\ mems:\ "}\|O\.{"lld\
+sols,"},\39\\{mems},\39\\{count});{}$\2\6
+\&{for} ${}(\|f\K\T{0.0},\39\\{fd}\K\T{1.0},\39\|l\K\T{0};{}$ ${}\|l<%
+\\{level};{}$ ${}\|l\PP){}$\5
+${}\{{}$\1\6
+${}\|c\K\\{nd}[\\{choice}[\|l]].\\{itm};{}$\6
+\&{for} ${}(\|k\K\T{1},\39\|p\K\\{nd}[\|c].\\{down};{}$ ${}\|p\I\\{choice}[%
+\|l];{}$ ${}\|k\PP,\39\|p\K\\{nd}[\|p].\\{down}){}$\1\5
+;\2\6
+\&{for} ${}(\|d\K\|k-\T{1};{}$ ${}\|p\G\\{last\_itm};{}$ ${}\|p\K\\{nd}[\|p].%
+\\{down},\39\|d\PP){}$\1\6
+\&{if} ${}(\\{nd}[\|p].\\{cost}\G\\{cutoffcost}-\\{partcost}[\|l]){}$\1\5
+\&{break};\2\2\6
+${}\\{fd}\MRL{*{\K}}\|d,\39\|f\MRL{+{\K}}(\|k-\T{1})/\\{fd}{}$;\C{ choice \PB{%
+\|l} is \PB{\|k} of \PB{\|d} }\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{"c"}\|O\.{"c"},\39\|k<\T{10}\?%
+\.{'0'}+\|k:\|k<\T{36}\?\.{'a'}+\|k-\T{10}:\|k<\T{62}\?\.{'A'}+\|k-\T{36}:%
+\.{'*'},\39\|d<\T{10}\?\.{'0'}+\|d:\|d<\T{36}\?\.{'a'}+\|d-\T{10}:\|d<\T{62}\?%
+\.{'A'}+\|d-\T{36}:\.{'*'});{}$\6
+\&{if} ${}(\|l\G\\{show\_levels\_max}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"..."});{}$\6
+\&{break};\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{".5f\\n"},\39\|f+\T{0.5}/\\{fd});{}$%
+\6
+\4${}\}{}$\2\par
+\fi
+
+\M{61}\B\X61:Print the profile\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Profile:\\n"});{}$\6
+\&{for} ${}(\\{level}\K\T{0};{}$ ${}\\{level}\Z\\{maxl};{}$ ${}\\{level}\PP){}$%
+\1\5
+${}\\{fprintf}(\\{stderr},\39\.{""}\|O\.{"3d:\ "}\|O\.{"lld\\n"},\39\\{level},%
+\39\\{profile}[\\{level}]);{}$\2\6
+\4${}\}{}$\2\par
+\U4.\fi
+
+\M{62}\B\X15:Subroutines\X${}\mathrel+\E{}$\6
+\&{int} \\{confusioncount};\7
+\&{void} \\{confusion}(\&{char} ${}{*}\\{id}){}$\1\1\2\2\6
+${}\{{}$\C{ an assertion has failed }\1\6
+\&{if} ${}(\\{confusioncount}\PP\E\T{0}{}$)\C{ can fiddle with debugger }\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"This\ can't\ happen\ (}\)\.{\%s)!\\n"},\39%
+\\{id});{}$\2\6
+\4${}\}{}$\2\par
+\fi
+
+\N{1}{63}Index.
+\fi
+
+\inx
+\fin
+\con

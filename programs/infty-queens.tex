@@ -1,0 +1,335 @@
+\input cwebmac
+
+\N{1}{1}Intro. What's the lexicographically smallest solution to the
+$\infty$-queens problem? I mean, consider the sequence $q_0$, $q_1$, \dots,
+where $q_n$ is the least nonnegative integer not in the sets
+$\{q_k\mid 0\le k<n\}$,
+$\{q_k+k-n\mid 0\le k<n\}$,
+$\{q_k-k+n\mid 0\le k<n\}$.
+
+Inspired by Eq. 7.2.2--(6), I maintain bit vectors $a$, $b$, $c$
+to record the occurrences of $q_k$, $q_k+k$, and $q_k-k$, for
+previously calculated values. Thus, for example, we'll have
+$c_r=1$ if and only if $q_k-k=r$ for some $k<n$, when I'm calculating $q_n$.
+The value of $q_n$ will be the smallest $k>0$ such that $a_k=0$ and
+$b_{k+n}=0$ and $c_{k-n}=0$.
+
+It turns out (as conjectured by Neil Sloane in 2016, and proved
+by him and Jeffrey Shallit shortly thereafter) that this sequence
+has lots of beautiful structure, which greatly facilitates the
+computation. Let $\phi$ be the golden ratio. Then the subscripts of~$a$
+will range from 0 to approximately $\phi n$; the subscripts
+of~$b$ will range from 0 to approximately $\phi^2 n$; and the subscripts
+of~$c$ will range from approximately $-\phi^{-2}n$ to approximately
+$\phi^{-1}n$. In particular, since $c$ has $n$ bits equal to~1,
+and $\phi^{-1}n+\phi^{-2}n=n$, almost all the bits of~$c$ will
+be equal to~1. Furthermore, $a$ will begin with a string of 1s,
+whose length is approximately $\phi^{-1}n$. Therefore we only
+need to look at a bounded number of bits when we're computing $q_n$.
+
+Nice, huh?
+
+This implementation uses one byte per bit. Of course I could
+make $n$ eight times larger by packing the bits.
+
+Another feature is an {\it exact\/} computation of the
+discrepancies between $q_n$ and $\phi n$ or $\phi^{-1}n$.
+For example, this program ``knows'' that
+$q_{F_{40}}=F_{41}=\phi F_{40}+\phi^{-40}$.
+
+\Y\B\4\D$\\{slack}$ \5
+\T{10}\C{ approximation when we allocate memory }\par
+\B\4\D$\\{phi}$ \5
+\T{1.6180339887498948482}\par
+\B\4\D$\\{tickmax}$ \5
+\T{25}\C{ I hope to need at most this many ticks per round }\par
+\B\4\D$\\{deltamax}$ \5
+\T{10}\par
+\B\4\D$\|o$ \5
+$\\{ticks}\PP{}$\par
+\B\4\D$\\{pausethresh}$ \5
+\T{999999995}\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\8\#\&{include} \.{<math.h>}\6
+\&{int} \\{goal};\C{ command-line parameter }\6
+\&{char} ${}{*}\|a,{}$ ${}{*}\|b,{}$ ${}{*}\|c;{}$\6
+\&{long} \&{long} \&{int} \\{maxmema}${},{}$ \\{maxmemb}${},{}$ %
+\\{minmemc}${},{}$ \\{maxmemc};\6
+\&{int} \\{ticks};\6
+\&{int} ${}\\{tickhist}[\\{tickmax}+\T{1}]{}$;\C{ histogram of run times }\6
+\&{int} \\{deltalominint}${},{}$ \\{deltalomaxint}${},{}$ %
+\\{deltahiminint}${},{}$ \\{deltahimaxint};\6
+\&{long} \&{long} \\{deltalominfrac}${},{}$ \\{deltalomaxfrac}${},{}$ %
+\\{deltahiminfrac}${},{}$ \\{deltahimaxfrac};\6
+\&{int} ${}\\{deltalomin}[\\{deltamax}+\T{1}],{}$ ${}\\{deltalomax}[%
+\\{deltamax}+\T{1}],{}$ ${}\\{deltahimin}[\\{deltamax}+\T{1}],{}$ ${}%
+\\{deltahimax}[\\{deltamax}+\T{1}];{}$\7
+\X7:Subroutines\X;\7
+\\{main}(\&{int} \\{argc}${},\39{}$\&{char} ${}{*}\\{argv}[\,]){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|j;\6
+\&{register} \&{long} \&{long} \|k${},{}$ \|n${},{}$ \|q${},{}$ \|r${},{}$ %
+\|s${},{}$ \|t${},{}$ \\{nphiint}${},{}$ \\{nphifrac};\7
+\X2:Process the command line\X;\6
+\X3:Allocate the arrays\X;\6
+${}\|r\K\|t\K\T{0},\39\|s\K\T{1};{}$\6
+\&{for} ${}(\|n\K\\{nphiint}\K\\{nphifrac}\K\T{1};{}$ ${}\|n\Z\\{goal};{}$ ${}%
+\|n\PP){}$\5
+${}\{{}$\1\6
+\X4:Determine $q=q_n$, or \PB{\&{goto} \\{done}} if out of memory\X;\6
+${}\\{printf}(\.{"\%lld\\n"},\39\|q);{}$\6
+\X8:Record statistics about $q$\X;\6
+\X6:Advance \PB{\\{nphiint}} and \PB{\\{nphifrac}}\X;\6
+\4${}\}{}$\2\6
+\4\\{done}:\5
+\X9:Print the final stats\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}\B\X2:Process the command line\X${}\E{}$\6
+\&{if} ${}(\\{argc}\I\T{2}\V\\{sscanf}(\\{argv}[\T{1}],\39\.{"\%d"},\39{\AND}%
+\\{goal})\I\T{1}){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Usage:\ \%s\ n\\n"},\39\\{argv}[\T{0}]);{}$\6
+${}\\{exit}({-}\T{1});{}$\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{3}\B\X3:Allocate the arrays\X${}\E{}$\6
+$\\{maxmema}\K((\&{int})(\\{phi}*\\{goal})+\\{slack});{}$\6
+${}\\{maxmemb}\K(\\{maxmema}+\\{goal});{}$\6
+${}\\{maxmemc}\K(\\{maxmema}-\\{goal});{}$\6
+${}\\{minmemc}\K(\\{goal}-\\{maxmemc}+\T{2}*\\{slack});{}$\6
+${}\|a\K{}$(\&{char} ${}{*}){}$ \\{calloc}${}(\\{maxmema},\39\&{sizeof}(%
+\&{char}));{}$\6
+\&{if} ${}(\R\|a){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Can't\ allocate\ arra}\)\.{y\ a!\\n"});{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\6
+${}\|b\K{}$(\&{char} ${}{*}){}$ \\{calloc}${}(\\{maxmemb},\39\&{sizeof}(%
+\&{char}));{}$\6
+\&{if} ${}(\R\|b){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Can't\ allocate\ arra}\)\.{y\ b!\\n"});{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\6
+${}\|c\K{}$(\&{char} ${}{*}){}$ \\{calloc}${}(\\{minmemc}+\\{maxmemc},\39%
+\&{sizeof}(\&{char}));{}$\6
+\&{if} ${}(\R\|c){}$\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"Can't\ allocate\ arra}\)\.{y\ c!\\n"});{}$\6
+${}\\{exit}({-}\T{2});{}$\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{4}In this algorithm, $s$ is the least positive integer such that $a_s=0$;
+$t$ is the greatest integer such that $t=0$ or $c_t=1$;
+$r$ is the greatest nonnegative integer $\le t$ such that $c_{-r}=0$.
+
+\Y\B\4\X4:Determine $q=q_n$, or \PB{\&{goto} \\{done}} if out of memory\X${}%
+\E{}$\6
+$\\{ticks}\K\T{0};{}$\6
+\&{for} ${}(\|k\K\|s;{}$ ${}\|k\Z\|n-\|r;{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|k+\|n\G\\{maxmemb}){}$\1\5
+\&{goto} \\{done};\2\6
+\&{if} ${}(\|o,\39\|b[\|k+\|n]\E\T{0}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|k-\|n+\\{minmemc}<\T{0}){}$\1\5
+\&{goto} \\{done};\2\6
+\&{if} ${}(\|o,\39\|c[\|k-\|n+\\{minmemc}]\E\T{0}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|o,\39\|a[\|k]\E\T{0}){}$\5
+${}\{{}$\1\6
+${}\|q\K\|k;{}$\6
+${}\|o,\39\|a[\|k]\K\T{1};{}$\6
+\&{if} ${}(\|k\E\|s){}$\1\6
+\&{for} ${}(\|s\K\|k+\T{1};{}$ \|o${},\39\|a[\|s]\E\T{1};{}$ ${}\|s\PP){}$\1\5
+;\2\2\6
+${}\|o,\39\|b[\|k+\|n]\K\T{1};{}$\6
+${}\|o,\39\|c[\|k-\|n+\\{minmemc}]\K\T{1};{}$\6
+\&{if} ${}(\|k-\|n\E{-}\|r){}$\1\6
+\&{for} ${}(\|r\K\|n-\|k+\T{1};{}$  ; ${}\|r\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|r>\\{minmemc}){}$\1\5
+\&{goto} \\{done};\2\6
+\&{if} ${}(\|o,\39\|c[\\{minmemc}-\|r]\E\T{0}){}$\1\5
+\&{break};\2\6
+\4${}\}{}$\2\2\6
+\&{goto} \\{got\_q};\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\|t\PP;{}$\6
+\&{if} ${}(\|t\G\\{maxmemc}){}$\1\5
+\&{goto} \\{done};\2\6
+${}\|o,\39\|c[\|t+\\{minmemc}]\K\T{1};{}$\6
+${}\|q\K\|n+\|t;{}$\6
+\&{if} ${}(\|q\G\\{maxmema}){}$\1\5
+\&{goto} \\{done};\2\6
+${}\|o,\39\|a[\|q]\K\T{1};{}$\6
+\&{if} ${}(\|q+\|n\G\\{maxmemb}){}$\1\5
+\&{goto} \\{done};\2\6
+${}\|o,\39\|b[\|q+\|n]\K\T{1};$ \\{got\_q}:\par
+\U1.\fi
+
+\M{5}I had special fun writing the next part of this program,
+which expresses the value of $n\phi$ as an integer plus
+$\sum_{k\ge1}x_k\phi^{-k}$, with $x_kx_{k+1}=0$ for all $k$.
+For example, $9\phi=14+\phi^{-2}+\phi^{-4}+\phi^{-7}$.
+We maintain the integer part in \PB{\\{nphiint}}, and the fractional
+part in \PB{\\{nphifrac}}, where the latter is the {\it binary\/} integer
+$(\ldots x_3x_2x_1)_2$.
+
+This fractional part has a nice connection with the {\it negaFibonacci
+number system}, which is described in equation 7.1.3--(147) of
+{\sl The Art of Computer Programming}. For example, $9=F_{-7}+F_{-4}+F_{-2}$
+is the negaFibonacci representation of~9; hence we have
+$9\phi=(F_6-F_4-F_2)\phi=F_7-F_5-F_3-((-\phi)^{-7}+(-\phi)^{-4}+(-\phi)^{-2}=
+14+\phi^{-7}+\phi^{-4}+\phi^{-2}$.
+
+Furthermore, equation 7.1.3--(149) shows a nice way to go from
+the negaFibonacci representation of $n$ to its successor.
+And exercise 7.1.3--45 shows that it's surprisingly easy to
+compare the fractional parts, even if they are ordered lexicographically
+from right to left instead of from left to right(!).
+
+\fi
+
+\M{6}\B\X6:Advance \PB{\\{nphiint}} and \PB{\\{nphifrac}}\X${}\E{}$\6
+$\\{nphiint}\PP;{}$\6
+\&{if} ${}(\\{nphifrac}\AND\T{\^3}){}$\1\5
+${}\\{nphiint}\PP;{}$\2\6
+${}\{{}$\1\6
+\&{register} \&{long} \&{long} \|y${},{}$ \|z;\7
+${}\|y\K\\{nphifrac}\XOR\T{\^aaaaaaaaaaaaaaaa};{}$\6
+${}\|z\K\|y\XOR(\|y+\T{1});{}$\6
+${}\|z\K\|z\OR(\\{nphifrac}\AND(\|z\LL\T{1}));{}$\6
+${}\\{nphifrac}\MRL{{\XOR}{\K}}\|z\XOR((\|z+\T{1})\GG\T{2});{}$\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{7}\B\X7:Subroutines\X${}\E{}$\6
+\&{int} \\{compfrac}(\&{long} \&{long} \|x${},\39{}$\&{long} \&{long} \|y)\1\1%
+\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \&{long} \&{long} \|d${}\K(\|x-\|y)\AND(\|y-\|x){}$;\C{
+Rockicki's hack }\7
+\&{return} ${}((\|d\AND\|y)\I\T{0}){}$;\C{ 1 if $x^R<y^R$, 0 otherwise }\6
+\4${}\}{}$\2\par
+\A10.
+\U1.\fi
+
+\M{8}\B\X8:Record statistics about $q$\X${}\E{}$\6
+\&{if} ${}(\|n>\\{pausethresh}){}$\1\5
+\\{debug}(\.{"watch\ me\ now"});\2\6
+\&{if} ${}(\\{ticks}\G\\{tickmax}){}$\1\5
+${}\\{tickhist}[\\{tickmax}]\PP;{}$\2\6
+\&{else}\1\5
+${}\\{tickhist}[\\{ticks}]\PP;{}$\2\6
+\&{if} ${}(\|q\G\|n){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|q>\\{nphiint}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|q-\\{nphiint}>\\{deltahimaxint}\V(\|q-\\{nphiint}\E%
+\\{deltahimaxint}\W\\{compfrac}(\\{nphifrac},\39\\{deltahimaxfrac}))){}$\5
+${}\{{}$\1\6
+${}\\{deltahimaxint}\K\|q-\\{nphiint},\39\\{deltahimaxfrac}\K\\{nphifrac};{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"n=\%lld,\ deltahimax=}\)\.{\%d,\%llx\\n"},\39%
+\|n,\39\\{deltahimaxint},\39\\{deltahimaxfrac});{}$\6
+\4${}\}{}$\2\6
+${}\|j\K\|q-\\{nphiint}-\T{1};{}$\6
+\&{if} ${}(\|j\G\\{deltamax}){}$\1\5
+${}\\{deltahimax}[\\{deltamax}]\PP;{}$\2\6
+\&{else}\1\5
+${}\\{deltahimax}[\|j]\PP;{}$\2\6
+\4${}\}{}$\5
+\2\&{else}\5
+${}\{{}$\1\6
+\&{if} ${}(\|q-\\{nphiint}<\\{deltahiminint}\V(\|q-\\{nphiint}\E%
+\\{deltahiminint}\W\\{compfrac}(\\{deltahiminfrac},\39\\{nphifrac}))){}$\5
+${}\{{}$\1\6
+${}\\{deltahiminint}\K\|q-\\{nphiint},\39\\{deltahiminfrac}\K\\{nphifrac};{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"n=\%lld,\ deltahimin=}\)\.{\%d,\%llx\\n"},\39%
+\|n,\39\\{deltahiminint},\39\\{deltahiminfrac});{}$\6
+\4${}\}{}$\2\6
+${}\|j\K\\{nphiint}-\|q;{}$\6
+\&{if} ${}(\|j\G\\{deltamax}){}$\1\5
+${}\\{deltahimin}[\\{deltamax}]\PP;{}$\2\6
+\&{else}\1\5
+${}\\{deltahimin}[\|j]\PP;{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\5
+\2\&{else} \&{if} ${}(\|q>(\\{nphiint}-\|n)){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\|q-(\\{nphiint}-\|n)>\\{deltalomaxint}\V(\|q-(\\{nphiint}-\|n)\E%
+\\{deltalomaxint}\W\\{compfrac}(\\{nphifrac},\39\\{deltalomaxfrac}))){}$\5
+${}\{{}$\1\6
+${}\\{deltalomaxint}\K\|q-(\\{nphiint}-\|n),\39\\{deltalomaxfrac}\K%
+\\{nphifrac};{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"n=\%lld,\ deltalomax=}\)\.{\%d,\%llx\\n"},\39%
+\|n,\39\\{deltalomaxint},\39\\{deltalomaxfrac});{}$\6
+\4${}\}{}$\2\6
+${}\|j\K\|q-(\\{nphiint}-\|n)-\T{1};{}$\6
+\&{if} ${}(\|j\G\\{deltamax}){}$\1\5
+${}\\{deltalomax}[\\{deltamax}]\PP;{}$\2\6
+\&{else}\1\5
+${}\\{deltalomax}[\|j]\PP;{}$\2\6
+\4${}\}{}$\5
+\2\&{else}\5
+${}\{{}$\1\6
+\&{if} ${}(\|q-(\\{nphiint}-\|n)<\\{deltalominint}\V(\|q-(\\{nphiint}-\|n)\E%
+\\{deltalominint}\W\\{compfrac}(\\{deltalominfrac},\39\\{nphifrac}))){}$\5
+${}\{{}$\1\6
+${}\\{deltalominint}\K\|q-(\\{nphiint}-\|n),\39\\{deltalominfrac}\K%
+\\{nphifrac};{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"n=\%lld,\ deltalomin=}\)\.{\%d,\%llx\\n"},\39%
+\|n,\39\\{deltalominint},\39\\{deltalominfrac});{}$\6
+\4${}\}{}$\2\6
+${}\|j\K(\\{nphiint}-\|n)-\|q;{}$\6
+\&{if} ${}(\|j\G\\{deltamax}){}$\1\5
+${}\\{deltalomin}[\\{deltamax}]\PP;{}$\2\6
+\&{else}\1\5
+${}\\{deltalomin}[\|j]\PP;{}$\2\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{9}\B\X9:Print the final stats\X${}\E{}$\6
+$\\{fprintf}(\\{stderr},\39\.{"OK,\ I\ computed\ \%lld}\)\.{\ elements\ of\ the%
+\ seq}\)\.{uence.\\n"},\39\|n-\T{1});{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"tick\ histogram:"});{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j\Z\\{tickmax};{}$ ${}\|j\PP){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ \%d"},\39\\{tickhist}[\|j]);{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\\n"});{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"deltalo\ histogram:"});{}$\6
+\&{for} ${}(\|j\K\\{deltamax};{}$ ${}\|j\G\T{0};{}$ ${}\|j\MM){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ \%d"},\39\\{deltalomin}[\|j]);{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ |"});{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j\Z\\{deltamax};{}$ ${}\|j\PP){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ \%d"},\39\\{deltalomax}[\|j]);{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\\n"});{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"deltahi\ histogram:"});{}$\6
+\&{for} ${}(\|j\K\\{deltamax};{}$ ${}\|j\G\T{0};{}$ ${}\|j\MM){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ \%d"},\39\\{deltahimin}[\|j]);{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ |"});{}$\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j\Z\\{deltamax};{}$ ${}\|j\PP){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ \%d"},\39\\{deltahimax}[\|j]);{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\\n"}){}$;\par
+\U1.\fi
+
+\M{10}\B\X7:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{debug}(\&{char} ${}{*}\|m){}$\1\1\2\2\6
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"\%s!\\n"},\39\|m);{}$\6
+\4${}\}{}$\2\par
+\fi
+
+\N{1}{11}Index.
+\fi
+
+\inx
+\fin
+\con

@@ -1,0 +1,733 @@
+\input cwebmac
+\datethis
+\let\Xmod=\bmod % this is CWEB magic for using "mod" instead of "%"
+\def\sqprod{\setbox0=\hbox{\kern-.13em$\times$\kern-.13em}
+     \dimen0=\ht0 \advance\dimen0 -.09em \ht0=\dimen0
+     \dimen0=\dp0 \advance\dimen0 -.09em \dp0=\dimen0
+     \mathbin{\vcenter{\hrule\kern-.4pt
+       \hbox{\vrule\kern-.4pt\phantom{$\box0$}\kern-.4pt\vrule}\kern-.4pt
+       \hrule}}}
+
+
+\N{1}{1}Intro. This program finds all of the nonisomorphic graceful labelings
+of the graph $K_m\sqprod P_3$. It was inspired by the paper of
+B.~M. Smith and J.-F. Puget in {\sl Constraints\/ \bf15} (2010), 64--92,
+where Table~5 reports a unique solution for $m=6$. I'm writing it because
+I want to gain experience, gracefulnesswise --- and also because Smith and
+Puget
+have unfortunately lost all records of the solution!
+
+The graph $K_m\sqprod P_3$ is ``hardwired'' into the logic of this program.
+It has $q=3{m\choose2}+2m$ edges; that's
+(7,~15, 26, 40, 57, 77, \dots) for $m=(2$, 3, 4, 5, 6, 7, \dots).
+I doubt if I'll be able to reach $m=7$; but I see no reason to exclude that
+case, because the algorithm needs very little memory.
+
+Please excuse me for writing this in a rush.
+
+\Y\B\4\D$\|m$ \5
+\T{6}\C{ the size of the cliques; must be at least 2 and at most 12 }\par
+\B\4\D$\|q$ \5
+$((\|m*(\T{3}*\|m+\T{1}))/\T{2}{}$)\C{ number of edges }\par
+\B\4\D$\|o$ \5
+$\\{mems}\PP{}$\C{ count one mem }\par
+\B\4\D$\\{oo}$ \5
+$\\{mems}\MRL{+{\K}}{}$\T{2}\C{ count two mems }\par
+\B\4\D$\\{ooo}$ \5
+$\\{mems}\MRL{+{\K}}{}$\T{3}\C{ count three mems }\par
+\B\4\D$\\{delta}$ \5
+\T{10000000000};\C{ report progress every \PB{\\{delta}} or so mems }\par
+\B\4\D$\|O$ \5
+\.{"\%"}\C{ used for percent signs in format strings }\par
+\B\4\D$\Xmod$ \5
+$\MOD{}$\C{ used for percent signs denoting remainder in \CEE/ }\par
+\B\4\D$\\{board}(\|i,\|j)$ \5
+$\\{brd}[\T{3}*(\|i)+(\|j){}$]\par
+\B\4\D$\\{leftknown}$ \5
+\\{colknown}[\T{0}]\par
+\Y\B\8\#\&{include} \.{<stdio.h>}\6
+\8\#\&{include} \.{<stdlib.h>}\6
+\&{unsigned} \&{long} \&{long} \\{mems};\C{ memory accesses }\6
+\&{unsigned} \&{long} \&{long} \\{thresh}${}\K\\{delta}{}$;\C{ time for next
+progress report }\6
+\&{unsigned} \&{long} \&{long} \\{nodes};\C{ nodes in the search tree }\6
+\&{unsigned} \&{long} \&{long} \\{nulls};\C{ nodes that need no new vertex
+placement }\6
+\&{unsigned} \&{long} \&{long} \\{leaves};\C{ nodes that have no descendants }\6
+\&{int} \\{count};\C{ number of solutions found so far }\6
+\&{int} ${}\\{brd}[\T{3}*\|m]{}$;\C{ one-dimensional array accessed via the %
+\PB{\\{board}} macro }\6
+\&{int} \\{rank};\C{ how many rows of the board are active? }\6
+\&{int} ${}\\{labeled}[\|q+\T{1}]{}$;\C{ what row and column, if any, have a
+particular label? }\6
+\&{int} ${}\\{placed}[\|q+\T{1}]{}$;\C{ has this edge been placed? }\6
+\&{int} \\{colknown}[\T{3}];\C{ how many vertices of each clique are labeled? }%
+\6
+\&{int} \\{move}[\|q][\T{1024}];\C{ feasible moves at each level }\6
+\&{int} \\{deg}[\|q];\C{ number of choices at each level; used in printouts
+only }\6
+\&{int} \|x[\|q];\C{ indexes of moves made at each level }\6
+\&{int} \\{maxl};\C{ maximum level reached }\6
+\&{int} \\{vbose}${}\K\T{0}{}$;\C{ can set this nonzero when debugging }\7
+\X3:Subroutines\X\7
+\\{main}(\,)\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|a${},{}$ \|b${},{}$ \|i${},{}$ \|j${},{}$ \|k${},{}$ %
+\|l${},{}$ \|t${},{}$ \|v${},{}$ \\{aa}${},{}$ \\{bb}${},{}$ \\{ii}${},{}$ %
+\\{row}${},{}$ \\{col}${},{}$ \\{ccol}${},{}$ \\{val}${},{}$ \\{mv}${},{}$ %
+\\{trouble};\7
+${}\\{fprintf}(\\{stderr},\39\.{"---\ Graceful\ labeli}\)\.{ngs\ of\ K"}\|O%
+\.{"d\ times\ P3\ ---\\n"},\39\|m);{}$\6
+\X2:Initialize the data structures\X;\6
+\X9:Backtrack through all solutions\X;\6
+${}\\{fprintf}(\\{stderr},\39\.{"Altogether\ "}\|O\.{"d\ solution"}\|O\.{"s,"},%
+\39\\{count},\39\\{count}\E\T{1}\?\.{""}:\.{"s"});{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{"lld\ mems,\ "}\|O\.{"lld-"}\|O%
+\.{"lld\ nodes,\ "}\|O\.{"lld\ leaves;"},\39\\{mems},\39\\{nodes},\39\\{nulls},%
+\39\\{leaves});{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ max\ level\ "}\|O\.{"d.\\n"},\39%
+\\{maxl});{}$\6
+\&{if} (\\{sanity\_checking})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"sanity\_checking\ was}\)\.{\ on!\\n"});{}$\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{2}The current status of the vertices labeled so far appears in
+the \PB{\\{board}}, which has three columns and $m$ rows. This is not a
+canonical representation: The rows can appear in any order.
+When a vertex is unlabeled, the \PB{\\{board}} has $-1$. When the vertex
+in row~$i$ and column~$j$ receives label~$l$, \PB{\\{labeled}[\|l]} records
+the value \PB{$(\|j\LL\T{4})+\|i$}; but \PB{\\{labeled}[\|l]} is $-1$ if that
+label hasn't
+been used. If both endpoints of an edge are labeled, and if $d$ is
+the difference between those labels, \PB{$\\{placed}[\|d]\K\T{1}$}; but
+\PB{$\\{placed}[\|d]\K\T{0}$} if no edge for difference~\PB{\|d} is yet known.
+
+The first \PB{\\{rank}} rows of the board have been labeled, at least
+in part.
+
+\Y\B\4\X2:Initialize the data structures\X${}\E{}$\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|m;{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\T{3};{}$ ${}\|j\PP){}$\1\5
+${}\\{board}(\|i,\39\|j)\K{-}\T{1};{}$\2\2\6
+${}\\{rank}\K\T{0};{}$\6
+\&{for} ${}(\|l\K\T{0};{}$ ${}\|l\Z\|q;{}$ ${}\|l\PP){}$\1\5
+${}\\{labeled}[\|l]\K{-}\T{1};{}$\2\6
+${}\|l\K\T{0}{}$;\par
+\U1.\fi
+
+\M{3}\B\X3:Subroutines\X${}\E{}$\6
+\&{void} \\{print\_board}(\&{int} \\{rank})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|i${},{}$ \|j;\7
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\\{rank};{}$ ${}\|i\PP){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\T{3};{}$ ${}\|j\PP){}$\1\6
+\&{if} ${}(\\{board}(\|i,\39\|j)\G\T{0}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{""}\|O\.{"3d"},\39\\{board}(\|i,\39\|j));{}$\2\6
+\&{else}\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ \ ?"});{}$\2\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\\n"});{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\As4, 5, 11, 13, 14\ETs20.
+\U1.\fi
+
+\M{4}\B\X3:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{print\_placed}(\&{void})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|k;\7
+\&{for} ${}(\|k\K\T{1};{}$ ${}\|k\Z\|q;{}$ ${}\|k\PP){}$\5
+${}\{{}$\1\6
+\&{if} (\\{placed}[\|k])\5
+${}\{{}$\1\6
+\&{if} ${}(\R\\{placed}[\|k-\T{1}]){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{"d"},\39\|k);{}$\2\6
+\&{else} \&{if} ${}(\|k\E\|q\V\R\\{placed}[\|k+\T{1}]){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{".."}\|O\.{"d"},\39\|k);{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\\n"});{}$\6
+\4${}\}{}$\2\par
+\fi
+
+\M{5}These data structures are somewhat fancy, so I'd better check that
+they're self-consistent.
+
+\Y\B\4\D$\\{sanity\_checking}$ \5
+\T{0}\C{ set this to 1 if you suspect a bug }\par
+\Y\B\4\X3:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{sanity}(\&{void})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|i${},{}$ \|j${},{}$ \|l${},{}$ \|t${},{}$ \|v;\7
+\X6:Check the rank\X;\6
+\X7:Check the labels\X;\6
+\X8:Check the placements\X;\6
+\4${}\}{}$\2\par
+\fi
+
+\M{6}\B\X6:Check the rank\X${}\E{}$\6
+\&{for} ${}(\|i\K\\{rank};{}$ ${}\|i<\|m;{}$ ${}\|i\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{board}(\|i,\39\T{0})\G\T{0}){}$\1\5
+\&{break};\2\6
+\&{if} ${}(\\{board}(\|i,\39\T{1})\G\T{0}){}$\1\5
+\&{break};\2\6
+\&{if} ${}(\\{board}(\|i,\39\T{2})\G\T{0}){}$\1\5
+\&{break};\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|i<\|m\V\\{rank}>\|m){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"rank\ shouldn't\ be\ "}\|O\.{"d!\\n"},\39%
+\\{rank}){}$;\2\par
+\U5.\fi
+
+\M{7}\B\X7:Check the labels\X${}\E{}$\6
+\&{for} ${}(\|l\K\T{0};{}$ ${}\|l\Z\|q;{}$ ${}\|l\PP){}$\5
+${}\{{}$\1\6
+${}\|v\K\\{labeled}[\|l];{}$\6
+\&{if} ${}(\|v\G\T{0}\W\\{board}(\|v\AND\T{\^f},\39\|v\GG\T{4})\I\|l){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"labeled["}\|O\.{"d]\ not\ on\ the\ board}\)%
+\.{!\\n"},\39\|l);{}$\2\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\\{rank};{}$ ${}\|i\PP){}$\1\6
+\&{for} ${}(\|j\K\T{0};{}$ ${}\|j<\T{3};{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{board}(\|i,\39\|j)>\|q){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"board("}\|O\.{"d,"}\|O\.{"d)\ out\ of\ range!%
+\\n"},\39\|i,\39\|j);{}$\2\6
+\&{if} ${}(\\{board}(\|i,\39\|j)\G\T{0}\W\\{labeled}[\\{board}(\|i,\39\|j)]\I(%
+\|j\LL\T{4})+\|i){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"label\ of\ board("}\|O\.{"d,"}\|O\.{"d)\ is\
+wrong!\\n"},\39\|i,\39\|j);{}$\2\6
+\4${}\}{}$\2\2\par
+\U5.\fi
+
+\M{8}\B\D$\\{testedge}(\|i,\|j,\\{ii},\\{jj})$ \6
+\&{if} ${}(\\{board}(\|i,\39\|j)\G\T{0}\W\\{board}(\\{ii},\39\\{jj})\G\T{0}){}$%
+\1\6
+\&{if} ${}(\|t\MM,\39\R\\{placed}[\\{abs}(\\{board}(\|i,\39\|j)-\\{board}(%
+\\{ii},\39\\{jj}))]){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"edge\ from\ ("}\|O\.{"d,"}\|O\.{"d)\ to\ ("}%
+\|O\.{"d,"}\|O\.{"d)\ not\ placed!\\n"},\39\|i,\39\|j,\39\\{ii},\39\\{jj}){}$;%
+\2\2\par
+\Y\B\4\X8:Check the placements\X${}\E{}$\6
+\&{for} ${}(\|t\K\T{0},\39\|l\K\T{1};{}$ ${}\|l\Z\|q;{}$ ${}\|l\PP){}$\1\5
+${}\|t\MRL{+{\K}}\\{placed}[\|l];{}$\2\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\\{rank};{}$ ${}\|i\PP){}$\5
+${}\{{}$\1\6
+${}\\{testedge}(\|i,\39\T{0},\39\|i,\39\T{1});{}$\6
+${}\\{testedge}(\|i,\39\T{1},\39\|i,\39\T{2});{}$\6
+\&{for} ${}(\|j\K\|i+\T{1};{}$ ${}\|j<\\{rank};{}$ ${}\|j\PP){}$\5
+${}\{{}$\1\6
+${}\\{testedge}(\|i,\39\T{0},\39\|j,\39\T{0});{}$\6
+${}\\{testedge}(\|i,\39\T{1},\39\|j,\39\T{1});{}$\6
+${}\\{testedge}(\|i,\39\T{2},\39\|j,\39\T{2});{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\6
+\&{if} (\|t)\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"placement\ count\ off}\)\.{\ by\ "}\|O\.{"d!%
+\\n"},\39\|t){}$;\2\par
+\U5.\fi
+
+\M{9}At level \PB{\|l} of the backtrack procedure I try to place the edge
+whose difference is \PB{$\|q-\|l$}, if that edge hasn't already been placed.
+
+Initially there are four symmetries in addition to the $m!$ permutations
+of the rows of the board: We can interchange the left and right cliques;
+that's called reflection. We can also complement each label, replacing
+\PB{\|l} by \PB{$\|q-\|l$}.
+
+I've set up the levels near the root so that complementation
+symmetry is avoided.
+
+Reflection symmetry will disappear as soon as
+\PB{\\{leftknown}} becomes nonzero. (After that happens, the board implicitly
+has
+$(m-\PB{\\{rank}})!$ symmetries.)
+
+\Y\B\4\X9:Backtrack through all solutions\X${}\E{}$\6
+\4\\{enter}:\5
+${}\\{nodes}\PP;{}$\6
+\&{if} ${}(\\{mems}\G\\{thresh}){}$\5
+${}\{{}$\1\6
+${}\\{thresh}\MRL{+{\K}}\\{delta};{}$\6
+\\{print\_progress}(\|l);\6
+\4${}\}{}$\2\6
+\&{if} (\\{sanity\_checking})\1\5
+\\{sanity}(\,);\2\6
+\&{if} ${}(\|l\Z\T{1}){}$\1\5
+\X15:Make special moves near the root\X;\2\6
+\&{if} ${}(\|l\G\\{maxl}){}$\5
+${}\{{}$\1\6
+${}\\{maxl}\K\|l;{}$\6
+\&{if} ${}(\|l\E\|q){}$\1\5
+\X10:Report a solution and \PB{\&{goto} \\{backup}}\X;\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\|o,\39\\{placed}[\|q-\|l]){}$\1\5
+\X12:Record the null move and \PB{\&{goto} \\{ready}}\X;\2\6
+\&{for} ${}(\|t\K\|a\K\T{0},\39\|b\K\|q-\|l;{}$ ${}\|b\Z\|q;{}$ ${}\|a\PP,\39%
+\|b\PP){}$\1\5
+\X18:Record all possible $(a,b)$ moves in the array \PB{\\{move}[\|l]}\X;\2\6
+\4\\{ready}:\5
+${}\\{deg}[\|l]\K\|t{}$;\C{ no \PB{\\{mems}} counted for diagnostics }\6
+\&{if} ${}(\R\|t){}$\1\5
+${}\\{leaves}\PP;{}$\2\6
+\4\\{tryit}:\5
+\&{if} ${}(\|t\E\T{0}){}$\1\5
+\&{goto} \\{backup};\2\6
+\4\\{advance}:\5
+\&{if} (\\{vbose})\5
+${}\{{}$\1\6
+${}\\{fprintf}(\\{stderr},\39\.{"L"}\|O\.{"d:\ "},\39\|l);{}$\6
+${}\\{print\_move}(\\{move}[\|l][\|t-\T{1}]);{}$\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ ("}\|O\.{"d\ of\ "}\|O\.{"d)\\n"},\39%
+\\{deg}[\|l]-\|t+\T{1},\39\\{deg}[\|l]);{}$\6
+\4${}\}{}$\2\6
+${}\|o,\39\|x[\|l]\K\MM\|t;{}$\6
+${}\|o,\39\\{mv}\K\\{move}[\|l][\|t];{}$\6
+\X16:Make \PB{\\{mv}}\X;\6
+\&{if} (\\{trouble})\5
+${}\{{}$\1\6
+\&{if} (\\{vbose})\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"\ --\ was\ bad\\n"});{}$\2\6
+\&{goto} \\{unmake};\6
+\4${}\}{}$\2\6
+${}\|l\PP;{}$\6
+\&{goto} \\{enter};\6
+\4\\{backup}:\5
+\&{if} ${}(\MM\|l\G\T{0}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\|t\K\|x[\|l];{}$\6
+\4\\{unmake}:\5
+${}\|o,\39\\{mv}\K\\{move}[\|l][\|t];{}$\6
+\X17:Unmake \PB{\\{mv}}\X;\6
+\&{goto} \\{tryit};\6
+\4${}\}{}$\2\par
+\U1.\fi
+
+\M{10}\B\X10:Report a solution and \PB{\&{goto} \\{backup}}\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{count}\PP;{}$\6
+${}\\{printf}(\.{""}\|O\.{"d:\\n"},\39\\{count});{}$\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\|m;{}$ ${}\|i\PP){}$\1\5
+${}\\{printf}(\.{""}\|O\.{"3d"}\|O\.{"3d"}\|O\.{"3d\\n"},\39\\{board}(\|i,\39%
+\T{0}),\39\\{board}(\|i,\39\T{1}),\39\\{board}(\|i,\39\T{2}));{}$\2\6
+\&{goto} \\{backup};\6
+\4${}\}{}$\2\par
+\U9.\fi
+
+\M{11}\B\X3:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{print\_progress}(\&{int} \\{level})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|l${},{}$ \|k${},{}$ \|d${},{}$ \|c${},{}$ \|p;\6
+\&{register} \&{double} \|f${},{}$ \\{fd};\7
+${}\\{fprintf}(\\{stderr},\39\.{"\ after\ "}\|O\.{"lld\ mems:\ "}\|O\.{"d\
+sols,"},\39\\{mems},\39\\{count});{}$\6
+\&{for} ${}(\|f\K\T{0.0},\39\\{fd}\K\T{1.0},\39\|l\K\T{0};{}$ ${}\|l<%
+\\{level};{}$ ${}\|l\PP){}$\5
+${}\{{}$\1\6
+${}\|d\K\\{deg}[\|l],\39\|k\K\|d-\|x[\|l];{}$\6
+${}\\{fd}\MRL{*{\K}}\|d,\39\|f\MRL{+{\K}}(\|k-\T{1})/\\{fd}{}$;\C{ choice \PB{%
+\|l} is \PB{\|k} of \PB{\|d} }\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{"c"}\|O\.{"c"},\39\|k<\T{10}\?%
+\.{'0'}+\|k:\|k<\T{36}\?\.{'a'}+\|k-\T{10}:\|k<\T{62}\?\.{'A'}+\|k-\T{36}:%
+\.{'*'},\39\|d<\T{10}\?\.{'0'}+\|d:\|d<\T{36}\?\.{'a'}+\|d-\T{10}:\|d<\T{62}\?%
+\.{'A'}+\|d-\T{36}:\.{'*'});{}$\6
+\4${}\}{}$\2\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ "}\|O\.{".5f\\n"},\39\|f+\T{0.5}/\\{fd});{}$%
+\6
+\4${}\}{}$\2\par
+\fi
+
+\M{12}A ``move'' consists of labeling 0, 1, or 2 vertices and updating
+the data structures. A 16-bit packed entry, consisting of
+column number (4~bits), row number (4~bits), and label value
+(8~bits), specifies what labeling should be done. If two 16-bit
+entries are present, the rightmost one is done first.
+
+It turns out that \PB{$(\\{row},\\{col},\\{val})$} will never be simultaneously
+zero.
+Hence an all-zero move means ``do nothing.''
+
+\Y\B\4\D$\\{pack}(\\{row},\\{col},\\{val})$ \5
+$(((\\{col})\LL\T{12})+((\\{row})\LL\T{8})+(\\{val}){}$)\par
+\Y\B\4\X12:Record the null move and \PB{\&{goto} \\{ready}}\X${}\E{}$\6
+${}\{{}$\1\6
+${}\|o,\39\\{move}[\|l][\T{0}]\K\T{0},\39\|t\K\T{1},\39\\{nulls}\PP;{}$\6
+\&{goto} \\{ready};\6
+\4${}\}{}$\2\par
+\U9.\fi
+
+\M{13}\B\X3:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{print\_move}(\&{int} \\{mv})\1\1\2\2\6
+${}\{{}$\1\6
+\&{if} ${}(\R\\{mv}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{"null"});{}$\2\6
+\&{else} \&{if} ${}(\\{mv}<\T{\^10000}){}$\1\5
+${}\\{fprintf}(\\{stderr},\39\.{""}\|O\.{"d"}\|O\.{"d="}\|O\.{"d"},\39(\\{mv}%
+\GG\T{8})\AND\T{\^f},\39(\\{mv}\GG\T{12})\AND\T{\^f},\39\\{mv}\AND\T{\^ff});{}$%
+\2\6
+\&{else}\1\5
+${}\\{fprintf}(\\{stderr},\39\.{""}\|O\.{"d"}\|O\.{"d="}\|O\.{"d,"}\|O\.{"d"}%
+\|O\.{"d="}\|O\.{"d"},\39(\\{mv}\GG\T{8})\AND\T{\^f},\39(\\{mv}\GG\T{12})\AND%
+\T{\^f},\39\\{mv}\AND\T{\^ff},\39(\\{mv}\GG\T{24})\AND\T{\^f},\39(\\{mv}\GG%
+\T{28})\AND\T{\^f},\39(\\{mv}\GG\T{16})\AND\T{\^ff});{}$\2\6
+\4${}\}{}$\2\7
+\&{void} \\{print\_moves}(\&{int} \\{level})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|i;\7
+\&{for} ${}(\|i\K\\{deg}[\\{level}]-\T{1};{}$ ${}\|i\G\T{0};{}$ ${}\|i\MM){}$\5
+${}\{{}$\C{ we try the moves in decreasing order }\1\6
+${}\\{fprintf}(\\{stderr},\39\.{""}\|O\.{"d:"},\39\\{deg}[\\{level}]-\|i);{}$\6
+\\{print\_move}(\\{move}[\\{level}][\|i]);\6
+${}\\{fprintf}(\\{stderr},\39\.{"\\n"});{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{14}\B\X3:Subroutines\X${}\mathrel+\E{}$\6
+\&{void} \\{print\_state}(\&{int} \\{levels})\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|l;\7
+\&{for} ${}(\|l\K\T{0};{}$ ${}\|l<\\{levels};{}$ ${}\|l\PP){}$\5
+${}\{{}$\1\6
+\\{print\_move}(\\{move}[\|l][\|x[\|l]]);\6
+${}\\{fprintf}(\\{stderr},\39\.{"\ ("}\|O\.{"d\ of\ "}\|O\.{"d)\\n"},\39%
+\\{deg}[\|l]-\|x[\|l],\39\\{deg}[\|l]);{}$\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\fi
+
+\M{15}The edge labeled \PB{\|q} must have endpoints labeled 0 and~\PB{\|q}.
+This
+can happen in only three essentially different ways: That edge
+either belongs to the middle clique, the left clique, or joins
+the left and middle cliques. In the latter case, complement
+symmetry has been broken. In the former cases, complement symmetry
+is avoided by insisting that the edge labeled \PB{$\|q-\T{1}$} has endpoints
+labeled 1 and~\PB{\|q}.
+
+\Y\B\4\X15:Make special moves near the root\X${}\E{}$\6
+\&{if} ${}(\|l\E\T{0}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\\{move}[\T{0}][\T{0}]\K(\\{pack}(\T{1},\39\T{1},\39\T{0})\LL\T{16})+%
+\\{pack}(\T{0},\39\T{1},\39\|q);{}$\6
+${}\|o,\39\\{move}[\T{0}][\T{1}]\K(\\{pack}(\T{1},\39\T{0},\39\T{0})\LL\T{16})+%
+\\{pack}(\T{0},\39\T{0},\39\|q);{}$\6
+${}\|o,\39\\{move}[\T{0}][\T{2}]\K(\\{pack}(\T{0},\39\T{1},\39\T{0})\LL\T{16})+%
+\\{pack}(\T{0},\39\T{0},\39\|q);{}$\6
+${}\|t\K\T{3};{}$\6
+\&{goto} \\{ready};\6
+\4${}\}{}$\5
+\2\&{else} \&{if} ${}(\|o,\39\|x[\T{0}]\I\T{2}){}$\5
+${}\{{}$\1\6
+${}\|t\K(\|m\E\T{2}\?\T{1}:\T{2});{}$\6
+${}\|o,\39\\{move}[\T{1}][\T{0}]\K\\{pack}(\T{0},\39\|x[\T{0}],\39\T{1});{}$\6
+\&{if} ${}(\|m>\T{2}){}$\1\5
+${}\|o,\39\\{move}[\T{1}][\T{1}]\K\\{pack}(\T{2},\39\T{1}-\|x[\T{0}],\39%
+\T{1});{}$\2\6
+\&{goto} \\{ready};\6
+\4${}\}{}$\2\par
+\U9.\fi
+
+\M{16}I set \PB{\\{trouble}} nonzero if any edge is placed more than once.
+
+\Y\B\4\X16:Make \PB{\\{mv}}\X${}\E{}$\6
+\&{for} ${}(\\{trouble}\K\T{0};{}$ \\{mv}; ${}\\{mv}\MRL{{\GG}{\K}}\T{16}){}$\5
+${}\{{}$\1\6
+${}\\{val}\K\\{mv}\AND\T{\^ff},\39\\{row}\K(\\{mv}\GG\T{8})\AND\T{\^f},\39%
+\\{col}\K(\\{mv}\GG\T{12})\AND\T{\^f};{}$\6
+${}\|o,\39\\{labeled}[\\{val}]\K(\\{mv}\GG\T{8})\AND\T{\^ff};{}$\6
+${}\|o,\39\\{board}(\\{row},\39\\{col})\K\\{val};{}$\6
+${}\\{oo},\39\\{colknown}[\\{col}]\PP;{}$\6
+\&{if} ${}(\\{col}>\T{0}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\|v\K\\{board}(\\{row},\39\\{col}-\T{1});{}$\6
+\&{if} ${}(\|v\G\T{0}){}$\1\5
+${}\\{oo},\39\\{trouble}\MRL{+{\K}}\\{placed}[\\{abs}(\\{val}-\|v)],\39%
+\\{placed}[\\{abs}(\\{val}-\|v)]\K\T{1};{}$\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{col}<\T{2}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\|v\K\\{board}(\\{row},\39\\{col}+\T{1});{}$\6
+\&{if} ${}(\|v\G\T{0}){}$\1\5
+${}\\{oo},\39\\{trouble}\MRL{+{\K}}\\{placed}[\\{abs}(\\{val}-\|v)],\39%
+\\{placed}[\\{abs}(\\{val}-\|v)]\K\T{1};{}$\2\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\\{rank};{}$ ${}\|i\PP){}$\1\6
+\&{if} ${}(\|i\I\\{row}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\|v\K\\{board}(\|i,\39\\{col});{}$\6
+\&{if} ${}(\|v\G\T{0}){}$\1\5
+${}\\{oo},\39\\{trouble}\MRL{+{\K}}\\{placed}[\\{abs}(\\{val}-\|v)],\39%
+\\{placed}[\\{abs}(\\{val}-\|v)]\K\T{1};{}$\2\6
+\4${}\}{}$\2\2\6
+\&{if} ${}(\\{row}\E\\{rank}){}$\1\5
+${}\\{rank}\PP;{}$\2\6
+\4${}\}{}$\2\par
+\Us9\ET22.\fi
+
+\M{17}\B\X17:Unmake \PB{\\{mv}}\X${}\E{}$\6
+\&{if} ${}(\\{mv}\G\T{\^10000}){}$\1\5
+${}\\{mv}\K(\\{mv}\GG\T{16})+((\\{mv}\AND\T{\^ffff})\LL\T{16}){}$;\C{ undo in
+opposite order }\2\6
+\&{for} ( ; \\{mv}; ${}\\{mv}\MRL{{\GG}{\K}}\T{16}){}$\5
+${}\{{}$\1\6
+${}\\{val}\K\\{mv}\AND\T{\^ff},\39\\{row}\K(\\{mv}\GG\T{8})\AND\T{\^f},\39%
+\\{col}\K(\\{mv}\GG\T{12})\AND\T{\^f};{}$\6
+\&{if} ${}(\\{row}\E\\{rank}-\T{1}\W(\|o,\39\\{board}(\\{row},\39(\\{col}+%
+\T{1})\Xmod\T{3})<\T{0})\W(\|o,\39\\{board}(\\{row},\39(\\{col}+\T{2})\Xmod%
+\T{3})<\T{0})){}$\1\5
+${}\\{rank}\K\\{row};{}$\2\6
+${}\|o,\39\\{labeled}[\\{val}]\K{-}\T{1};{}$\6
+${}\|o,\39\\{board}(\\{row},\39\\{col})\K{-}\T{1};{}$\6
+${}\\{oo},\39\\{colknown}[\\{col}]\MM;{}$\6
+\&{if} ${}(\\{col}>\T{0}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\|v\K\\{board}(\\{row},\39\\{col}-\T{1});{}$\6
+\&{if} ${}(\|v\G\T{0}){}$\1\5
+${}\|o,\39\\{placed}[\\{abs}(\\{val}-\|v)]\K\T{0};{}$\2\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{col}<\T{2}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\|v\K\\{board}(\\{row},\39\\{col}+\T{1});{}$\6
+\&{if} ${}(\|v\G\T{0}){}$\1\5
+${}\|o,\39\\{placed}[\\{abs}(\\{val}-\|v)]\K\T{0};{}$\2\6
+\4${}\}{}$\2\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\\{rank};{}$ ${}\|i\PP){}$\1\6
+\&{if} ${}(\|i\I\\{row}){}$\5
+${}\{{}$\1\6
+${}\|o,\39\|v\K\\{board}(\|i,\39\\{col});{}$\6
+\&{if} ${}(\|v\G\T{0}){}$\1\5
+${}\|o,\39\\{placed}[\\{abs}(\\{val}-\|v)]\K\T{0};{}$\2\6
+\4${}\}{}$\2\2\6
+\4${}\}{}$\2\par
+\Us9\ET22.\fi
+
+\N{1}{18}The nitty gritty. OK, I've put all the infrastructure into place.
+It remains to figure out all legal ways to place a new edge
+whose endpoints are labeled \PB{\|a}~and~\PB{\|b}.
+(This is where the graph $K_m\sqprod P_3$ is really ``hardwired.'')
+
+I do this by brute force, while trying to be careful. Sometimes I just
+barely avoided a bug, but I hope that I've exterminated them all.
+
+\Y\B\4\X18:Record all possible $(a,b)$ moves in the array \PB{\\{move}[\|l]}%
+\X${}\E{}$\6
+${}\{{}$\1\6
+${}\\{oo},\39\\{aa}\K\\{labeled}[\|a],\39\\{bb}\K\\{labeled}[\|b];{}$\6
+\&{if} ${}(\\{aa}\G\T{0}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{bb}\G\T{0}){}$\1\5
+\&{continue};\C{ \PB{\|a} and \PB{\|b} are already on the \PB{\\{board}} }\2\6
+${}\\{row}\K\\{aa}\AND\T{\^f},\39\\{col}\K\\{aa}\GG\T{4};{}$\6
+\X19:Record all legal placements of \PB{\|b} adjacent to \PB{\|a}\X;\6
+\4${}\}{}$\5
+\2\&{else} \&{if} ${}(\\{bb}\G\T{0}){}$\5
+${}\{{}$\1\6
+${}\\{row}\K\\{bb}\AND\T{\^f},\39\\{col}\K\\{bb}\GG\T{4};{}$\6
+\X21:Record all legal placements of \PB{\|a} adjacent to \PB{\|b}\X;\6
+\4${}\}{}$\2\6
+\&{else}\1\5
+\X22:Record all adjacent placements of \PB{\|a} and \PB{\|b}\X;\2\6
+\4${}\}{}$\2\par
+\U9.\fi
+
+\M{19}\B\X19:Record all legal placements of \PB{\|b} adjacent to \PB{\|a}\X${}%
+\E{}$\6
+\&{switch} (\\{col})\5
+${}\{{}$\1\6
+\4\&{case} \T{0}:\5
+\&{if} ${}((\|o,\39\\{board}(\\{row},\39\T{1})<\T{0})\W\\{legal\_in\_col}(\|b,%
+\39\T{1})\W((\|o,\39\\{board}(\\{row},\39\T{2})<\T{0})\V(\|o,\39\R\\{placed}[%
+\\{abs}(\|b-\\{board}(\\{row},\39\T{2}))]))){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\\{row},\39\T{1},\39\|b);{}$\2\6
+\&{break};\6
+\4\&{case} \T{1}:\5
+\&{if} ${}((\|o,\39\\{board}(\\{row},\39\T{0})<\T{0})\W\\{legal\_in\_col}(\|b,%
+\39\T{0})){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\\{row},\39\T{0},\39\|b);{}$\2\6
+\&{if} ${}((\|o,\39\\{leftknown})\W(\|o,\39\\{board}(\\{row},\39\T{2})<\T{0})\W%
+\\{legal\_in\_col}(\|b,\39\T{2})){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\\{row},\39\T{2},\39\|b);{}$\2\6
+\&{break};\6
+\4\&{case} \T{2}:\5
+\&{if} ${}((\|o,\39\\{board}(\\{row},\39\T{1})<\T{0})\W\\{legal\_in\_col}(\|b,%
+\39\T{1})\W((\|o,\39\\{board}(\\{row},\39\T{0})<\T{0})\V(\|o,\39\R\\{placed}[%
+\\{abs}(\|b-\\{board}(\\{row},\39\T{0}))]))){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\\{row},\39\T{1},\39\|b);{}$\2\6
+\&{break};\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{legal\_in\_col}(\|b,\39\\{col})){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\\{rank};{}$ ${}\|i\PP){}$\1\6
+\&{if} ${}(\|o,\39\\{board}(\|i,\39\\{col})<\T{0}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{col}>\T{0}\W(\|o,\39\\{board}(\|i,\39\\{col}-\T{1})\G\T{0})\W(%
+\|o,\39\\{placed}[\\{abs}(\|b-\\{board}(\|i,\39\\{col}-\T{1}))])){}$\1\5
+\&{continue};\2\6
+\&{if} ${}(\\{col}<\T{2}\W(\|o,\39\\{board}(\|i,\39\\{col}+\T{1})\G\T{0})\W(%
+\|o,\39\\{placed}[\\{abs}(\|b-\\{board}(\|i,\39\\{col}+\T{1}))])){}$\1\5
+\&{continue};\2\6
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\|i,\39\\{col},\39\|b);{}$\6
+\4${}\}{}$\2\2\6
+\&{if} ${}(\\{rank}<\|m){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\\{rank},\39\\{col},\39\|b);{}$\2\6
+\4${}\}{}$\2\par
+\U18.\fi
+
+\M{20}\B\X3:Subroutines\X${}\mathrel+\E{}$\6
+\&{int} ${}\\{legal\_in\_col}(\\{val},\39\\{col}){}$\1\1\2\2\6
+${}\{{}$\1\6
+\&{register} \&{int} \|i${},{}$ \|v;\7
+\&{if} ${}(\|o,\39\\{colknown}[\\{col}]\E\|m){}$\1\5
+\&{return} \T{0};\2\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\\{rank};{}$ ${}\|i\PP){}$\5
+${}\{{}$\1\6
+${}\|o,\39\|v\K\\{board}(\|i,\39\\{col});{}$\6
+\&{if} ${}(\|v\G\T{0}\W(\|o,\39\\{placed}[\\{abs}(\|v-\\{val})])){}$\1\5
+\&{return} \T{0};\2\6
+\4${}\}{}$\2\6
+\&{return} \T{1};\6
+\4${}\}{}$\2\par
+\fi
+
+\M{21}\B\X21:Record all legal placements of \PB{\|a} adjacent to \PB{\|b}\X${}%
+\E{}$\6
+\&{switch} (\\{col})\5
+${}\{{}$\1\6
+\4\&{case} \T{0}:\5
+\&{if} ${}((\|o,\39\\{board}(\\{row},\39\T{1})<\T{0})\W\\{legal\_in\_col}(\|a,%
+\39\T{1})\W((\|o,\39\\{board}(\\{row},\39\T{2})<\T{0})\V(\|o,\39\R\\{placed}[%
+\\{abs}(\|a-\\{board}(\\{row},\39\T{2}))]))){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\\{row},\39\T{1},\39\|a);{}$\2\6
+\&{break};\6
+\4\&{case} \T{1}:\5
+\&{if} ${}((\|o,\39\\{board}(\\{row},\39\T{0})<\T{0})\W\\{legal\_in\_col}(\|a,%
+\39\T{0})){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\\{row},\39\T{0},\39\|a);{}$\2\6
+\&{if} ${}((\|o,\39\\{leftknown})\W(\|o,\39\\{board}(\\{row},\39\T{2})<\T{0})\W%
+\\{legal\_in\_col}(\|a,\39\T{2})){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\\{row},\39\T{2},\39\|a);{}$\2\6
+\&{break};\6
+\4\&{case} \T{2}:\5
+\&{if} ${}((\|o,\39\\{board}(\\{row},\39\T{1})<\T{0})\W\\{legal\_in\_col}(\|a,%
+\39\T{1})\W((\|o,\39\\{board}(\\{row},\39\T{0})<\T{0})\V(\|o,\39\R\\{placed}[%
+\\{abs}(\|a-\\{board}(\\{row},\39\T{0}))]))){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\\{row},\39\T{1},\39\|a);{}$\2\6
+\&{break};\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{legal\_in\_col}(\|a,\39\\{col})){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\\{rank};{}$ ${}\|i\PP){}$\1\6
+\&{if} ${}(\|o,\39\\{board}(\|i,\39\\{col})<\T{0}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{col}>\T{0}\W(\|o,\39\\{board}(\|i,\39\\{col}-\T{1})\G\T{0})\W(%
+\|o,\39\\{placed}[\\{abs}(\|a-\\{board}(\|i,\39\\{col}-\T{1}))])){}$\1\5
+\&{continue};\2\6
+\&{if} ${}(\\{col}<\T{2}\W(\|o,\39\\{board}(\|i,\39\\{col}+\T{1})\G\T{0})\W(%
+\|o,\39\\{placed}[\\{abs}(\|a-\\{board}(\|i,\39\\{col}+\T{1}))])){}$\1\5
+\&{continue};\2\6
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\|i,\39\\{col},\39\|a);{}$\6
+\4${}\}{}$\2\2\6
+\&{if} ${}(\\{rank}<\|m){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K\\{pack}(\\{rank},\39\\{col},\39\|a);{}$\2\6
+\4${}\}{}$\2\par
+\U18.\fi
+
+\M{22}Finally, the hard case is when a double move is needed.
+First I tentatively try all placements of~\PB{\|a}, actually changing the
+board.
+Then I record the double moves for \PB{\|b} adjacent to every such placement.
+Of course the board has to be restored again.
+
+\Y\B\4\X22:Record all adjacent placements of \PB{\|a} and \PB{\|b}\X${}\E{}$\6
+\&{for} ${}(\|o,\39\\{ccol}\K(\\{leftknown}\?\T{2}:\T{1});{}$ ${}\\{ccol}\G%
+\T{0};{}$ ${}\\{ccol}\MM){}$\1\6
+\&{if} ${}(\\{legal\_in\_col}(\|a,\39\\{ccol})){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\\{ii}\K\T{0};{}$ ${}\\{ii}<\\{rank};{}$ ${}\\{ii}\PP){}$\1\6
+\&{if} ${}(\|o,\39\\{board}(\\{ii},\39\\{ccol})<\T{0}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{ccol}>\T{0}\W(\|o,\39\\{board}(\\{ii},\39\\{ccol}-\T{1})\G\T{0})%
+\W(\|o,\39\\{placed}[\\{abs}(\|a-\\{board}(\\{ii},\39\\{ccol}-\T{1}))])){}$\1\5
+\&{continue};\2\6
+\&{if} ${}(\\{ccol}<\T{2}\W(\|o,\39\\{board}(\\{ii},\39\\{ccol}+\T{1})\G\T{0})%
+\W(\|o,\39\\{placed}[\\{abs}(\|a-\\{board}(\\{ii},\39\\{ccol}+\T{1}))])){}$\1\5
+\&{continue};\2\6
+${}\\{aa}\K\\{mv}\K\\{pack}(\\{ii},\39\\{ccol},\39\|a){}$;\5
+\X16:Make \PB{\\{mv}}\X;\5
+${}\\{mv}\K\\{aa};{}$\6
+\&{if} ${}(\R\\{trouble}){}$\1\5
+\X23:Record all double placements of \PB{\|b} adjacent to \PB{\|a}\X;\2\6
+\X17:Unmake \PB{\\{mv}}\X;\6
+\4${}\}{}$\2\2\6
+\&{if} ${}(\\{rank}<\|m){}$\5
+${}\{{}$\1\6
+${}\\{aa}\K\\{mv}\K\\{pack}(\\{rank},\39\\{ccol},\39\|a){}$;\5
+\X16:Make \PB{\\{mv}}\X;\5
+${}\\{mv}\K\\{aa};{}$\6
+\&{if} ${}(\R\\{trouble}){}$\1\5
+\X23:Record all double placements of \PB{\|b} adjacent to \PB{\|a}\X;\2\6
+\X17:Unmake \PB{\\{mv}}\X;\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\2\par
+\U18.\fi
+
+\M{23}\B\X23:Record all double placements of \PB{\|b} adjacent to \PB{\|a}\X${}%
+\E{}$\6
+${}\{{}$\1\6
+\&{switch} (\\{col})\5
+${}\{{}$\1\6
+\4\&{case} \T{0}:\5
+\&{if} ${}((\|o,\39\\{board}(\\{row},\39\T{1})<\T{0})\W\\{legal\_in\_col}(\|b,%
+\39\T{1})\W((\|o,\39\\{board}(\\{row},\39\T{2})<\T{0})\V(\|o,\39\R\\{placed}[%
+\\{abs}(\|b-\\{board}(\\{row},\39\T{2}))]))){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K(\\{pack}(\\{row},\39\T{1},\39\|b)\LL\T{16})+%
+\\{mv};{}$\2\6
+\&{break};\6
+\4\&{case} \T{1}:\5
+\&{if} ${}((\|o,\39\\{board}(\\{row},\39\T{0})<\T{0})\W\\{legal\_in\_col}(\|b,%
+\39\T{0})){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K(\\{pack}(\\{row},\39\T{0},\39\|b)\LL\T{16})+%
+\\{mv};{}$\2\6
+\&{if} ${}((\|o,\39\\{leftknown})\W(\|o,\39\\{board}(\\{row},\39\T{2})<\T{0})\W%
+\\{legal\_in\_col}(\|b,\39\T{2})){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K(\\{pack}(\\{row},\39\T{2},\39\|b)\LL\T{16})+%
+\\{mv};{}$\2\6
+\&{break};\6
+\4\&{case} \T{2}:\5
+\&{if} ${}((\|o,\39\\{board}(\\{row},\39\T{1})<\T{0})\W\\{legal\_in\_col}(\|b,%
+\39\T{1})\W((\|o,\39\\{board}(\\{row},\39\T{0})<\T{0})\V(\|o,\39\R\\{placed}[%
+\\{abs}(\|b-\\{board}(\\{row},\39\T{0}))]))){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K(\\{pack}(\\{row},\39\T{1},\39\|b)\LL\T{16})+%
+\\{mv};{}$\2\6
+\&{break};\6
+\4${}\}{}$\2\6
+\&{if} ${}(\\{legal\_in\_col}(\|b,\39\\{col})){}$\5
+${}\{{}$\1\6
+\&{for} ${}(\|i\K\T{0};{}$ ${}\|i<\\{rank};{}$ ${}\|i\PP){}$\1\6
+\&{if} ${}(\|o,\39\\{board}(\|i,\39\\{col})<\T{0}){}$\5
+${}\{{}$\1\6
+\&{if} ${}(\\{col}>\T{0}\W(\|o,\39\\{board}(\|i,\39\\{col}-\T{1})\G\T{0})\W(%
+\|o,\39\\{placed}[\\{abs}(\|b-\\{board}(\|i,\39\\{col}-\T{1}))])){}$\1\5
+\&{continue};\2\6
+\&{if} ${}(\\{col}<\T{2}\W(\|o,\39\\{board}(\|i,\39\\{col}+\T{1})\G\T{0})\W(%
+\|o,\39\\{placed}[\\{abs}(\|b-\\{board}(\|i,\39\\{col}+\T{1}))])){}$\1\5
+\&{continue};\2\6
+${}\|o,\39\\{move}[\|l][\|t\PP]\K(\\{pack}(\|i,\39\\{col},\39\|b)\LL\T{16})+%
+\\{mv};{}$\6
+\4${}\}{}$\2\2\6
+\&{if} ${}(\\{rank}<\|m){}$\1\5
+${}\|o,\39\\{move}[\|l][\|t\PP]\K(\\{pack}(\\{rank},\39\\{col},\39\|b)\LL%
+\T{16})+\\{mv};{}$\2\6
+\4${}\}{}$\2\6
+\4${}\}{}$\2\par
+\U22.\fi
+
+\N{1}{24}Index.
+\fi
+
+\inx
+\fin
+\con

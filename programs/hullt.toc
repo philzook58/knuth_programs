@@ -1,0 +1,7 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {Data structures}{1}{3}{2}{Data structures}
+\ZZ {Hull updating}{1}{10}{4}{Hull updating}
+\ZZ {Determinants}{1}{17}{9}{Determinants}
+
+\catcode `\@=12\relax 

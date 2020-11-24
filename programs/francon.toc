@@ -1,0 +1,7 @@
+\catcode `\@=11\relax 
+\ZZ {Introduction}{1}{1}{1}{Introduction}
+\ZZ {The main algorithm}{1}{6}{3}{The main algorithm}
+\ZZ {The inverse algorithm}{1}{9}{5}{The inverse algorithm}
+\ZZ {Index}{1}{10}{6}{Index}
+
+\catcode `\@=12\relax 
