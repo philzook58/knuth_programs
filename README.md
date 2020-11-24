@@ -1,7 +1,9 @@
 # Knuth Programs
-An attempt to compile at least a fraction of the knuth programs [https://www-cs-faculty.stanford.edu/~knuth/programs.html](view-source:https://www-cs-faculty.stanford.edu/~knuth/programs.html) into pdfs.
+An attempt to compile at least a fraction of the knuth programs [https://www-cs-faculty.stanford.edu/~knuth/programs.html](https://www-cs-faculty.stanford.edu/~knuth/programs.html) into pdfs.
 
 It is not that easy to get cweb working. And the produced pdfs are not that appealing, so maybe my tex distro is jacked up?
+
+Other useful links:
 
 https://ctan.org/pkg/cweb
 
@@ -9,6 +11,7 @@ https://github.com/agl/critbit
 
 
 
+### Program listing (some links are broken)
 
 
 <dt><a href="programs/sham.pdf">SHAM</a></dt>
